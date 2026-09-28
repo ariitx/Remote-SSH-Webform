@@ -1,0 +1,36 @@
+import * as vscode from 'vscode';
+
+export interface Settings {
+  configuration: string;
+  platform: string;
+  debugType: string;
+  buildProjectReferences: boolean;
+  buildBeforeRun: boolean;
+  additionalMsbuildArgs: string[];
+  msbuildPath: string;
+  iisExpressPath: string;
+  applicationPool: string;
+  bindAllHostnames: boolean;
+  justMyCode: boolean;
+  stopSitesWhenDebuggingStops: boolean;
+  startupTimeoutSeconds: number;
+}
+
+export function getSettings(): Settings {
+  const c = vscode.workspace.getConfiguration('remoteSshWebForm');
+  return {
+    configuration: c.get('configuration', 'Debug'),
+    platform: c.get('platform', 'AnyCPU'),
+    debugType: c.get('debugType', 'portable'),
+    buildProjectReferences: c.get('buildProjectReferences', false),
+    buildBeforeRun: c.get('buildBeforeRun', true),
+    additionalMsbuildArgs: c.get<string[]>('additionalMsbuildArgs', []),
+    msbuildPath: c.get('msbuildPath', ''),
+    iisExpressPath: c.get('iisExpressPath', ''),
+    applicationPool: c.get('applicationPool', 'Clr4IntegratedAppPool'),
+    bindAllHostnames: c.get('bindAllHostnames', true),
+    justMyCode: c.get('justMyCode', true),
+    stopSitesWhenDebuggingStops: c.get('stopSitesWhenDebuggingStops', true),
+    startupTimeoutSeconds: c.get('startupTimeoutSeconds', 60),
+  };
+}

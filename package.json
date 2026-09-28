@@ -1,0 +1,164 @@
+{
+  "name": "remote-ssh-webform",
+  "displayName": "Remote SSH WebForm",
+  "description": "Build, run and debug classic ASP.NET (.NET Framework Web Forms / Web API) projects under IIS Express from VS Code Remote-SSH, driven by Visual Studio .slnLaunch profiles.",
+  "version": "0.1.0",
+  "publisher": "ariitx",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "extensionDependencies": [
+    "ms-dotnettools.csharp"
+  ],
+  "categories": [
+    "Debuggers",
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/*.slnLaunch",
+    "workspaceContains:**/*.csproj"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "remoteSshWebForm.selectProfile",
+        "title": "Select Launch Profile",
+        "category": "Remote SSH WebForm",
+        "icon": "$(server-process)"
+      },
+      {
+        "command": "remoteSshWebForm.build",
+        "title": "Build Profile",
+        "category": "Remote SSH WebForm"
+      },
+      {
+        "command": "remoteSshWebForm.run",
+        "title": "Run Profile (without debugging)",
+        "category": "Remote SSH WebForm",
+        "icon": "$(play)"
+      },
+      {
+        "command": "remoteSshWebForm.debug",
+        "title": "Debug Profile",
+        "category": "Remote SSH WebForm",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "remoteSshWebForm.stop",
+        "title": "Stop IIS Express",
+        "category": "Remote SSH WebForm",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "remoteSshWebForm.openBrowser",
+        "title": "Open Site in Browser",
+        "category": "Remote SSH WebForm"
+      }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "remoteSshWebForm",
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      }
+    ],
+    "configuration": {
+      "title": "Remote SSH WebForm",
+      "properties": {
+        "remoteSshWebForm.configuration": {
+          "type": "string",
+          "default": "Debug",
+          "description": "MSBuild Configuration to build."
+        },
+        "remoteSshWebForm.platform": {
+          "type": "string",
+          "default": "AnyCPU",
+          "description": "MSBuild Platform to build."
+        },
+        "remoteSshWebForm.debugType": {
+          "type": "string",
+          "default": "portable",
+          "description": "MSBuild DebugType. The VS Code 'clr' debugger needs portable PDBs."
+        },
+        "remoteSshWebForm.buildProjectReferences": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also build referenced projects. Off by default so unrelated breakage elsewhere in the solution can't block a debug session; referenced assemblies must then already exist from a prior solution build."
+        },
+        "remoteSshWebForm.buildBeforeRun": {
+          "type": "boolean",
+          "default": true,
+          "description": "Build the profile's projects before Run/Debug."
+        },
+        "remoteSshWebForm.additionalMsbuildArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra arguments appended to every MSBuild invocation."
+        },
+        "remoteSshWebForm.msbuildPath": {
+          "type": "string",
+          "default": "",
+          "description": "Full path to MSBuild.exe. Empty = locate via vswhere."
+        },
+        "remoteSshWebForm.iisExpressPath": {
+          "type": "string",
+          "default": "",
+          "description": "Full path to iisexpress.exe. Empty = %ProgramFiles%\\IIS Express\\iisexpress.exe."
+        },
+        "remoteSshWebForm.applicationPool": {
+          "type": "string",
+          "enum": [
+            "Clr4IntegratedAppPool",
+            "Clr4ClassicAppPool"
+          ],
+          "default": "Clr4IntegratedAppPool",
+          "description": "IIS Express application pool for the generated sites."
+        },
+        "remoteSshWebForm.bindAllHostnames": {
+          "type": "boolean",
+          "default": true,
+          "description": "Bind sites to all hostnames (\"*:<port>:\") so they answer on the machine's IP/hostname, not only localhost. Needs a URL reservation when VS Code isn't elevated; the extension tries to add one."
+        },
+        "remoteSshWebForm.justMyCode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Debugger 'Just My Code' setting."
+        },
+        "remoteSshWebForm.stopSitesWhenDebuggingStops": {
+          "type": "boolean",
+          "default": true,
+          "description": "Stop the IIS Express sites once every debug session started by Debug Profile has ended."
+        },
+        "remoteSshWebForm.startupTimeoutSeconds": {
+          "type": "number",
+          "default": 60,
+          "description": "How long to wait for each IIS Express site to report it is running."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --skip-license --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "@types/vscode": "1.90.0",
+    "@vscode/vsce": "^3.2.0",
+    "typescript": "^5.6.0"
+  }
+}
