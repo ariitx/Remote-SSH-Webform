@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 export interface Settings {
   configuration: string;
   platform: string;
+  solutionPlatform: string;
+  restoreBeforeSolutionBuild: boolean;
   debugType: string;
   buildProjectReferences: boolean;
   buildBeforeRun: boolean;
@@ -21,6 +23,8 @@ export function getSettings(): Settings {
   return {
     configuration: c.get('configuration', 'Debug'),
     platform: c.get('platform', 'AnyCPU'),
+    solutionPlatform: c.get('solutionPlatform', 'Any CPU'),
+    restoreBeforeSolutionBuild: c.get('restoreBeforeSolutionBuild', true),
     debugType: c.get('debugType', 'portable'),
     buildProjectReferences: c.get('buildProjectReferences', false),
     buildBeforeRun: c.get('buildBeforeRun', true),

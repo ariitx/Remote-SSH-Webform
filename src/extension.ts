@@ -2,11 +2,11 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { IisExpressManager, RunningSite } from './iisexpress';
-import { buildProjects } from './msbuild';
-import { discoverSlnLaunchProfiles, discoverSolutionsWithoutSlnLaunch, discoverWebProjectProfiles } from './profiles';
+import { buildProjects, buildSolution } from './msbuild';
+import { discoverSlnLaunchProfiles, discoverSolutions, discoverSolutionsWithoutSlnLaunch, discoverWebProjectProfiles } from './profiles';
 import { Settings, getSettings } from './settings';
 import { resolveSites } from './sites';
-import { LaunchProfile, generateSlnLaunch, profileLabelFromId, resolveProfileById, slnLaunchPathFor } from './slnLaunch';
+import { LaunchProfile, findSolutionFile, generateSlnLaunch, profileLabelFromId, resolveProfileById, slnLaunchPathFor } from './slnLaunch';
 import { errorMessage } from './util';
 
 const PROFILE_KEY = 'remoteSshWebForm.profileId';
@@ -17,6 +17,7 @@ export function activate(context: vscode.ExtensionContext): void {
     controller,
     vscode.commands.registerCommand('remoteSshWebForm.selectProfile', () => controller.selectProfile()),
     vscode.commands.registerCommand('remoteSshWebForm.build', () => controller.build()),
+    vscode.commands.registerCommand('remoteSshWebForm.buildSolution', () => controller.buildSolution()),
     vscode.commands.registerCommand('remoteSshWebForm.run', () => controller.start(false)),
     vscode.commands.registerCommand('remoteSshWebForm.debug', () => controller.start(true)),
     vscode.commands.registerCommand('remoteSshWebForm.stop', () => controller.stop()),
@@ -33,6 +34,7 @@ class Controller implements vscode.Disposable {
   private readonly debugItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 49);
   private readonly runItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 48);
   private readonly stopItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 47);
+  private readonly buildSolutionItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 46);
   private readonly disposables: vscode.Disposable[] = [];
   private readonly ourDebugSessions = new Set<string>();
   private stopWhenDebuggingEnds = false;
@@ -50,6 +52,9 @@ class Controller implements vscode.Disposable {
     this.runItem.tooltip = 'Remote SSH WebForm: build and run the selected profile without debugging';
     this.stopItem.command = 'remoteSshWebForm.stop';
     this.stopItem.tooltip = 'Remote SSH WebForm: stop the IIS Express sites it started';
+    this.buildSolutionItem.command = 'remoteSshWebForm.buildSolution';
+    this.buildSolutionItem.text = '$(tools)';
+    this.buildSolutionItem.tooltip = "Remote SSH WebForm: build the selected profile's whole solution";
 
     this.disposables.push(
       this.iis,
@@ -58,6 +63,7 @@ class Controller implements vscode.Disposable {
       this.debugItem,
       this.runItem,
       this.stopItem,
+      this.buildSolutionItem,
       this.iis.onDidChange(() => this.refreshStatus()),
       vscode.debug.onDidStartDebugSession(session => this.trackSession(session)),
       vscode.debug.onDidTerminateDebugSession(session => this.onSessionEnded(session)),
@@ -129,6 +135,17 @@ class Controller implements vscode.Disposable {
     return this.guarded('Build', async () => {
       const profile = await this.ensureProfile();
       if (profile) await this.buildProfile(profile, getSettings());
+    });
+  }
+
+  buildSolution(): Promise<void> {
+    return this.guarded('Build Solution', async () => {
+      const solution = await this.resolveSolution();
+      if (!solution) return;
+      const settings = getSettings();
+      if (!(await buildSolution(solution, settings))) {
+        vscode.window.showErrorMessage(`Build failed for ${path.basename(solution)}. See the Build Solution terminal and the Problems panel.`);
+      }
     });
   }
 
@@ -213,6 +230,24 @@ class Controller implements vscode.Disposable {
     return true;
   }
 
+  private async resolveSolution(): Promise<string | undefined> {
+    const id = this.context.workspaceState.get<string>(PROFILE_KEY);
+    const profile = id ? resolveProfileById(id) : undefined;
+    const fromProfile = profile && findSolutionFile(profile);
+    if (fromProfile) return fromProfile;
+
+    const solutions = await discoverSolutions();
+    if (solutions.length <= 1) {
+      if (solutions.length === 0) vscode.window.showWarningMessage('Remote SSH WebForm: no .sln or .slnx found in this workspace.');
+      return solutions[0];
+    }
+    const choice = await vscode.window.showQuickPick(
+      solutions.map(s => ({ label: path.basename(s), description: vscode.workspace.asRelativePath(s), solution: s })),
+      { placeHolder: 'Build which solution?' },
+    );
+    return choice?.solution;
+  }
+
   private async ensureProfile(): Promise<LaunchProfile | undefined> {
     const id = this.context.workspaceState.get<string>(PROFILE_KEY);
     return (id && resolveProfileById(id)) || this.selectProfile();
@@ -294,6 +329,8 @@ class Controller implements vscode.Disposable {
     const id = this.context.workspaceState.get<string>(PROFILE_KEY);
     this.profileItem.text = `$(server-process) ${id ? profileLabelFromId(id) : 'Select WebForm profile'}`;
     this.profileItem.show();
+    if (this.busy) this.buildSolutionItem.hide();
+    else this.buildSolutionItem.show();
 
     const running = this.iis.running.length;
     if (running > 0) {

@@ -22,8 +22,42 @@ export async function findMsBuild(settings: Settings): Promise<string> {
   return found;
 }
 
-/** Builds each project in order inside one VS Code task, so output lands in one terminal and $msCompile fills the Problems panel. */
 export async function buildProjects(projectPaths: string[], solutionDir: string, settings: Settings): Promise<boolean> {
+  const invocations = [...new Set(projectPaths)].map(projectPath => [
+    projectPath,
+    '/t:Build',
+    `/p:Configuration=${settings.configuration}`,
+    `/p:Platform=${settings.platform}`,
+    `/p:DebugType=${settings.debugType}`,
+    solutionDirProperty(solutionDir),
+    `/p:BuildProjectReferences=${settings.buildProjectReferences}`,
+    '/m',
+    '/nologo',
+    '/v:minimal',
+    ...settings.additionalMsbuildArgs,
+  ]);
+  return runMsBuild('Build', invocations, settings);
+}
+
+/** Builds every project in the solution, restoring NuGet packages first (including packages.config projects). */
+export async function buildSolution(solutionPath: string, settings: Settings): Promise<boolean> {
+  const args = [
+    solutionPath,
+    '/t:Build',
+    `/p:Configuration=${settings.configuration}`,
+    `/p:Platform=${settings.solutionPlatform}`,
+    `/p:DebugType=${settings.debugType}`,
+    '/m',
+    '/nologo',
+    '/v:minimal',
+    ...settings.additionalMsbuildArgs,
+  ];
+  if (settings.restoreBeforeSolutionBuild) args.push('/restore', '/p:RestorePackagesConfig=true');
+  return runMsBuild('Build Solution', [args], settings);
+}
+
+/** Runs the MSBuild invocations in order inside one VS Code task, so output lands in one terminal and $msCompile fills the Problems panel. */
+async function runMsBuild(taskName: string, invocations: string[][], settings: Settings): Promise<boolean> {
   const msbuild = await findMsBuild(settings);
   const lines = [
     "$ProgressPreference = 'SilentlyContinue'",
@@ -31,21 +65,8 @@ export async function buildProjects(projectPaths: string[], solutionDir: string,
     'Remove-Item Env:\\NoDefaultCurrentDirectoryInExePath -ErrorAction SilentlyContinue',
     '$failed = 0',
   ];
-  for (const projectPath of [...new Set(projectPaths)]) {
-    const args = [
-      projectPath,
-      '/t:Build',
-      `/p:Configuration=${settings.configuration}`,
-      `/p:Platform=${settings.platform}`,
-      `/p:DebugType=${settings.debugType}`,
-      solutionDirProperty(solutionDir),
-      `/p:BuildProjectReferences=${settings.buildProjectReferences}`,
-      '/m',
-      '/nologo',
-      '/v:minimal',
-      ...settings.additionalMsbuildArgs,
-    ];
-    lines.push(`Write-Host ${psQuote(`==> ${path.basename(projectPath)}`)}`);
+  for (const args of invocations) {
+    lines.push(`Write-Host ${psQuote(`==> ${path.basename(args[0])}`)}`);
     lines.push(`& ${psQuote(msbuild)} ${args.map(psQuote).join(' ')}`);
     lines.push('if ($LASTEXITCODE -ne 0) { $failed = $LASTEXITCODE }');
   }
@@ -55,7 +76,7 @@ export async function buildProjects(projectPaths: string[], solutionDir: string,
   const task = new vscode.Task(
     definition,
     vscode.TaskScope.Workspace,
-    'Build',
+    taskName,
     'Remote SSH WebForm',
     new vscode.ProcessExecution('powershell.exe', powerShellArgs(lines.join('\n'))),
     '$msCompile',

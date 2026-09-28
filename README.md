@@ -19,6 +19,7 @@ The status bar shows the selected profile plus Debug / Run buttons (or Stop whil
 - **Debug Profile**: builds the profile's projects, starts IIS Express for each web project, and attaches the debugger to each `Action: "Start"` project's process by PID.
 - **Run Profile**: the same without attaching.
 - **Build Profile**: builds only; errors appear in the Problems panel.
+- **Build Solution** (status bar wrench button): builds the whole solution behind the selected profile (or asks which one when that's ambiguous), restoring NuGet packages first. Use it after pulling changes to referenced projects, since the profile builds skip project references by default.
 - **Stop IIS Express**: stops only the IIS Express processes this extension started.
 - **Open Site in Browser**: opens a running site on the client machine, forwarding the port through Remote-SSH.
 
@@ -35,7 +36,7 @@ The status bar shows the selected profile plus Debug / Run buttons (or Stop whil
 
 ## Settings
 
-All settings are under `remoteSshWebForm.*`: `configuration`, `platform`, `debugType` (default `portable`, required by the `clr` debugger), `buildProjectReferences`, `buildBeforeRun`, `additionalMsbuildArgs`, `msbuildPath`, `iisExpressPath`, `applicationPool`, `bindAllHostnames`, `justMyCode`, `stopSitesWhenDebuggingStops`, `startupTimeoutSeconds`.
+All settings are under `remoteSshWebForm.*`: `configuration`, `platform`, `solutionPlatform`, `restoreBeforeSolutionBuild`, `debugType` (default `portable`, required by the `clr` debugger), `buildProjectReferences`, `buildBeforeRun`, `additionalMsbuildArgs`, `msbuildPath`, `iisExpressPath`, `applicationPool`, `bindAllHostnames`, `justMyCode`, `stopSitesWhenDebuggingStops`, `startupTimeoutSeconds`.
 
 ## Development
 

@@ -98,6 +98,19 @@ export function singleProjectProfile(projectPath: string): LaunchProfile {
   };
 }
 
+/** The .sln/.slnx a profile belongs to: the only one in its solution folder, or the one named like its .slnLaunch. */
+export function findSolutionFile(profile: LaunchProfile): string | undefined {
+  let solutions: string[];
+  try {
+    solutions = fs.readdirSync(profile.solutionDir).filter(n => /\.slnx?$/i.test(n));
+  } catch {
+    return undefined;
+  }
+  const launchBase = path.basename(profile.source).replace(/\.slnLaunch(\.user)?$/i, '').toLowerCase();
+  const match = solutions.length === 1 ? solutions[0] : solutions.find(n => path.parse(n).name.toLowerCase() === launchBase);
+  return match ? path.join(profile.solutionDir, match) : undefined;
+}
+
 export function resolveProfileById(id: string): LaunchProfile | undefined {
   const [kind, file, ...rest] = id.split('|');
   if (!file || !fs.existsSync(file)) return undefined;

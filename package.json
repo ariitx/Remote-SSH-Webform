@@ -2,7 +2,7 @@
   "name": "remote-ssh-webform",
   "displayName": "Remote SSH WebForm",
   "description": "Build, run and debug classic ASP.NET (.NET Framework Web Forms / Web API) projects under IIS Express from VS Code Remote-SSH, driven by Visual Studio .slnLaunch profiles.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "ariitx",
   "engines": {
     "vscode": "^1.90.0"
@@ -35,6 +35,12 @@
         "command": "remoteSshWebForm.build",
         "title": "Build Profile",
         "category": "Remote SSH WebForm"
+      },
+      {
+        "command": "remoteSshWebForm.buildSolution",
+        "title": "Build Solution",
+        "category": "Remote SSH WebForm",
+        "icon": "$(tools)"
       },
       {
         "command": "remoteSshWebForm.run",
@@ -85,6 +91,16 @@
           "type": "string",
           "default": "AnyCPU",
           "description": "MSBuild Platform to build."
+        },
+        "remoteSshWebForm.solutionPlatform": {
+          "type": "string",
+          "default": "Any CPU",
+          "description": "Solution platform for Build Solution (solution platforms are named like \"Any CPU\", unlike the project platform \"AnyCPU\")."
+        },
+        "remoteSshWebForm.restoreBeforeSolutionBuild": {
+          "type": "boolean",
+          "default": true,
+          "description": "Restore NuGet packages (including packages.config projects) as part of Build Solution."
         },
         "remoteSshWebForm.debugType": {
           "type": "string",

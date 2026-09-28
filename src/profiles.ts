@@ -15,12 +15,13 @@ export async function discoverSlnLaunchProfiles(): Promise<LaunchProfile[]> {
   return [...preferred.values()].sort().flatMap(parseSlnLaunch);
 }
 
-export async function discoverSolutionsWithoutSlnLaunch(): Promise<string[]> {
+export async function discoverSolutions(): Promise<string[]> {
   const files = await vscode.workspace.findFiles('**/*.{sln,slnx}', SEARCH_EXCLUDE, 50);
-  return files
-    .map(f => f.fsPath)
-    .filter(p => !hasSlnLaunch(p))
-    .sort();
+  return files.map(f => f.fsPath).sort();
+}
+
+export async function discoverSolutionsWithoutSlnLaunch(): Promise<string[]> {
+  return (await discoverSolutions()).filter(p => !hasSlnLaunch(p));
 }
 
 export async function discoverWebProjectProfiles(): Promise<LaunchProfile[]> {
