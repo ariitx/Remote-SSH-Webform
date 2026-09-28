@@ -28,18 +28,18 @@ export async function resolveSites(profile: LaunchProfile): Promise<{ sites: Sit
   const ports = new Map<number, string>();
 
   for (const project of profile.projects) {
-    const rel = path.relative(profile.solutionDir, project.csprojPath);
-    if (!fs.existsSync(project.csprojPath)) {
+    const rel = path.relative(profile.solutionDir, project.projectPath);
+    if (!fs.existsSync(project.projectPath)) {
       notes.push(`Skipping ${rel}: project file not found.`);
       continue;
     }
-    const info = inspectProject(project.csprojPath);
+    const info = inspectProject(project.projectPath);
     if (!info.isWeb) {
       notes.push(`Skipping ${rel}: not an IIS Express web project (built, but not started).`);
       continue;
     }
     if (!info.iisUrl) {
-      notes.push(`Skipping ${rel}: no <IISUrl> in its .csproj/.csproj.user to take the port from.`);
+      notes.push(`Skipping ${rel}: no <IISUrl> in the project file or its .user file to take the port from.`);
       continue;
     }
 

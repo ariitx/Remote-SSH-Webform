@@ -15,6 +15,7 @@ The extension runs on the Windows side (`extensionKind: workspace`), so install 
 The status bar shows the selected profile plus Debug / Run buttons (or Stop while sites run).
 
 - **Select Launch Profile**: lists every profile in `*.slnLaunch` / `*.slnLaunch.user` (the `.user` file wins, as in Visual Studio), plus each IIS Express web project on its own. The choice is remembered per workspace.
+  - For a solution (`.sln` / `.slnx`) without a `.slnLaunch`, the list offers **Create `<Solution>.slnLaunch`**. It writes one profile per web project that has an `<IISUrl>`, plus an "All web projects" profile, next to the solution, where Visual Studio also reads it. Edit the file to combine projects into your own profiles.
 - **Debug Profile**: builds the profile's projects, starts IIS Express for each web project, and attaches the debugger to each `Action: "Start"` project's process by PID.
 - **Run Profile**: the same without attaching.
 - **Build Profile**: builds only; errors appear in the Problems panel.
@@ -23,7 +24,8 @@ The status bar shows the selected profile plus Debug / Run buttons (or Stop whil
 
 ## How it works
 
-- **Ports** come from each project's `<IISUrl>` (`.csproj.user` first, then `.csproj`).
+- **Projects**: C# (`.csproj`) and VB.NET (`.vbproj`) web application projects.
+- **Ports** come from each project's `<IISUrl>` (the `.user` file first, then the project file).
 - **Config**: a standalone `applicationhost.config` is generated in the extension's workspace storage from IIS Express's own template, so Visual Studio's `.vs\...\applicationhost.config` is never touched.
 - **Bindings** use a blank hostname (`*:<port>:`) so a site answers on the Windows machine's IP or hostname, not only `localhost`. Without this, requests to the IP get `503`. When VS Code isn't elevated, the extension adds the needed URL reservation (`netsh http add urlacl`), or logs the command to run once elevated.
 - **HTTPS** works for ports that already have a certificate bound. IIS Express pre-binds its development certificate to ports 44300–44399.

@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import * as path from 'path';
 import { IisExpressManager, RunningSite } from './iisexpress';
 import { buildProjects } from './msbuild';
-import { discoverSlnLaunchProfiles, discoverWebProjectProfiles } from './profiles';
+import { discoverSlnLaunchProfiles, discoverSolutionsWithoutSlnLaunch, discoverWebProjectProfiles } from './profiles';
 import { Settings, getSettings } from './settings';
 import { resolveSites } from './sites';
-import { LaunchProfile, profileLabelFromId, resolveProfileById } from './slnLaunch';
+import { LaunchProfile, generateSlnLaunch, profileLabelFromId, resolveProfileById, slnLaunchPathFor } from './slnLaunch';
 import { errorMessage } from './util';
 
 const PROFILE_KEY = 'remoteSshWebForm.profileId';
@@ -69,9 +70,13 @@ class Controller implements vscode.Disposable {
   }
 
   async selectProfile(): Promise<LaunchProfile | undefined> {
-    const [slnProfiles, projectProfiles] = await Promise.all([discoverSlnLaunchProfiles(), discoverWebProjectProfiles()]);
+    const [slnProfiles, projectProfiles, solutionsWithoutSlnLaunch] = await Promise.all([
+      discoverSlnLaunchProfiles(),
+      discoverWebProjectProfiles(),
+      discoverSolutionsWithoutSlnLaunch(),
+    ]);
     const current = this.context.workspaceState.get<string>(PROFILE_KEY);
-    type Item = vscode.QuickPickItem & { profile?: LaunchProfile };
+    type Item = vscode.QuickPickItem & { profile?: LaunchProfile; createFrom?: string };
     const toItem = (profile: LaunchProfile, description: string): Item => ({
       label: profile.id === current ? `$(check) ${profile.name}` : profile.name,
       description,
@@ -79,20 +84,31 @@ class Controller implements vscode.Disposable {
     });
 
     const items: Item[] = [];
+    if (solutionsWithoutSlnLaunch.length > 0) {
+      items.push({ label: 'Create launch profiles', kind: vscode.QuickPickItemKind.Separator });
+      for (const solution of solutionsWithoutSlnLaunch) {
+        items.push({
+          label: `$(new-file) Create ${path.basename(slnLaunchPathFor(solution))}`,
+          description: `from ${vscode.workspace.asRelativePath(solution)}`,
+          detail: 'One profile per IIS Express web project in the solution; edit the file afterwards to combine projects.',
+          createFrom: solution,
+        });
+      }
+    }
     let lastSource: string | undefined;
     for (const profile of slnProfiles) {
       if (profile.source !== lastSource) {
         items.push({ label: vscode.workspace.asRelativePath(profile.source), kind: vscode.QuickPickItemKind.Separator });
         lastSource = profile.source;
       }
-      items.push(toItem(profile, profile.projects.map(p => path.basename(p.csprojPath, '.csproj')).join(', ')));
+      items.push(toItem(profile, profile.projects.map(p => path.parse(p.projectPath).name).join(', ')));
     }
     if (projectProfiles.length > 0) {
       items.push({ label: 'Web projects', kind: vscode.QuickPickItemKind.Separator });
       for (const profile of projectProfiles) items.push(toItem(profile, vscode.workspace.asRelativePath(profile.source)));
     }
-    if (!items.some(i => i.profile)) {
-      vscode.window.showWarningMessage('Remote SSH WebForm: no .slnLaunch profiles or IIS Express web projects found in this workspace.');
+    if (!items.some(i => i.profile || i.createFrom)) {
+      vscode.window.showWarningMessage('Remote SSH WebForm: no .slnLaunch profiles, solutions or IIS Express web projects found in this workspace.');
       return undefined;
     }
 
@@ -100,6 +116,9 @@ class Controller implements vscode.Disposable {
       placeHolder: 'Select the profile to build, run and debug',
       matchOnDescription: true,
     });
+    if (choice?.createFrom) {
+      return (await this.createSlnLaunch(choice.createFrom)) ? this.selectProfile() : undefined;
+    }
     if (!choice?.profile) return undefined;
     await this.context.workspaceState.update(PROFILE_KEY, choice.profile.id);
     this.refreshStatus();
@@ -174,13 +193,33 @@ class Controller implements vscode.Disposable {
     await vscode.env.openExternal(uri);
   }
 
+  private async createSlnLaunch(solutionPath: string): Promise<boolean> {
+    const { file, entries } = generateSlnLaunch(solutionPath);
+    if (entries.length === 0) {
+      vscode.window.showWarningMessage(`Remote SSH WebForm: ${path.basename(solutionPath)} has no IIS Express web project, so there is nothing to launch.`);
+      return false;
+    }
+    if (fs.existsSync(file)) {
+      vscode.window.showWarningMessage(`Remote SSH WebForm: ${path.basename(file)} already exists; not overwriting it.`);
+      return true;
+    }
+    await fs.promises.writeFile(file, `${JSON.stringify(entries, null, 2)}\n`.replace(/\n/g, '\r\n'), 'utf8');
+    this.output.appendLine(`Created ${file} with profiles: ${entries.map(e => e.Name).join(', ')}`);
+    void vscode.window
+      .showInformationMessage(`Created ${path.basename(file)} with ${entries.length} profile(s). Visual Studio uses the same file.`, 'Open File')
+      .then(choice => {
+        if (choice) void vscode.window.showTextDocument(vscode.Uri.file(file));
+      });
+    return true;
+  }
+
   private async ensureProfile(): Promise<LaunchProfile | undefined> {
     const id = this.context.workspaceState.get<string>(PROFILE_KEY);
     return (id && resolveProfileById(id)) || this.selectProfile();
   }
 
   private async buildProfile(profile: LaunchProfile, settings: Settings): Promise<boolean> {
-    const ok = await buildProjects(profile.projects.map(p => p.csprojPath), profile.solutionDir, settings);
+    const ok = await buildProjects(profile.projects.map(p => p.projectPath), profile.solutionDir, settings);
     if (!ok) {
       const hint = settings.buildProjectReferences
         ? ''

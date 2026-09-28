@@ -23,7 +23,7 @@ export async function findMsBuild(settings: Settings): Promise<string> {
 }
 
 /** Builds each project in order inside one VS Code task, so output lands in one terminal and $msCompile fills the Problems panel. */
-export async function buildProjects(csprojPaths: string[], solutionDir: string, settings: Settings): Promise<boolean> {
+export async function buildProjects(projectPaths: string[], solutionDir: string, settings: Settings): Promise<boolean> {
   const msbuild = await findMsBuild(settings);
   const lines = [
     "$ProgressPreference = 'SilentlyContinue'",
@@ -31,9 +31,9 @@ export async function buildProjects(csprojPaths: string[], solutionDir: string, 
     'Remove-Item Env:\\NoDefaultCurrentDirectoryInExePath -ErrorAction SilentlyContinue',
     '$failed = 0',
   ];
-  for (const csproj of [...new Set(csprojPaths)]) {
+  for (const projectPath of [...new Set(projectPaths)]) {
     const args = [
-      csproj,
+      projectPath,
       '/t:Build',
       `/p:Configuration=${settings.configuration}`,
       `/p:Platform=${settings.platform}`,
@@ -45,7 +45,7 @@ export async function buildProjects(csprojPaths: string[], solutionDir: string, 
       '/v:minimal',
       ...settings.additionalMsbuildArgs,
     ];
-    lines.push(`Write-Host ${psQuote(`==> ${path.basename(csproj)}`)}`);
+    lines.push(`Write-Host ${psQuote(`==> ${path.basename(projectPath)}`)}`);
     lines.push(`& ${psQuote(msbuild)} ${args.map(psQuote).join(' ')}`);
     lines.push('if ($LASTEXITCODE -ne 0) { $failed = $LASTEXITCODE }');
   }

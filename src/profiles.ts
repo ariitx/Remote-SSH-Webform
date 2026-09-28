@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { inspectProject } from './projects';
-import { LaunchProfile, parseSlnLaunch, singleProjectProfile } from './slnLaunch';
+import { isLaunchableWebProject } from './projects';
+import { LaunchProfile, hasSlnLaunch, parseSlnLaunch, singleProjectProfile } from './slnLaunch';
 
 const SEARCH_EXCLUDE = '{**/node_modules/**,**/bin/**,**/obj/**,**/.git/**,**/.vs/**,**/packages/**}';
 
@@ -15,11 +15,19 @@ export async function discoverSlnLaunchProfiles(): Promise<LaunchProfile[]> {
   return [...preferred.values()].sort().flatMap(parseSlnLaunch);
 }
 
-export async function discoverWebProjectProfiles(): Promise<LaunchProfile[]> {
-  const files = await vscode.workspace.findFiles('**/*.csproj', SEARCH_EXCLUDE, 1000);
+export async function discoverSolutionsWithoutSlnLaunch(): Promise<string[]> {
+  const files = await vscode.workspace.findFiles('**/*.{sln,slnx}', SEARCH_EXCLUDE, 50);
   return files
     .map(f => f.fsPath)
-    .filter(p => inspectProject(p).isWeb)
+    .filter(p => !hasSlnLaunch(p))
+    .sort();
+}
+
+export async function discoverWebProjectProfiles(): Promise<LaunchProfile[]> {
+  const files = await vscode.workspace.findFiles('**/*.{csproj,vbproj}', SEARCH_EXCLUDE, 1000);
+  return files
+    .map(f => f.fsPath)
+    .filter(isLaunchableWebProject)
     .sort()
     .map(singleProjectProfile);
 }

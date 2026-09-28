@@ -2,7 +2,7 @@
   "name": "remote-ssh-webform",
   "displayName": "Remote SSH WebForm",
   "description": "Build, run and debug classic ASP.NET (.NET Framework Web Forms / Web API) projects under IIS Express from VS Code Remote-SSH, driven by Visual Studio .slnLaunch profiles.",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "publisher": "ariitx",
   "engines": {
     "vscode": "^1.90.0"
@@ -19,7 +19,8 @@
   ],
   "activationEvents": [
     "workspaceContains:**/*.slnLaunch",
-    "workspaceContains:**/*.csproj"
+    "workspaceContains:**/*.csproj",
+    "workspaceContains:**/*.vbproj"
   ],
   "main": "./out/extension.js",
   "contributes": {
