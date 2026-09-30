@@ -23,6 +23,13 @@ The status bar shows the selected profile plus Debug / Run buttons (or Stop whil
 - **Stop IIS Express**: stops only the IIS Express processes this extension started.
 - **Open Site in Browser**: opens a running site on the client machine, forwarding the port through Remote-SSH.
 
+## Changing code while debugging
+
+Edit and Continue isn't available. For .NET Framework it exists only in Visual Studio; the VS Code `clr` debugger doesn't support it, and C# Hot Reload in VS Code covers .NET 6+ only. How to get changes into a running site:
+
+- **Markup** (`.aspx`, `.ascx`, `.master`), JavaScript and CSS: save and refresh the browser. ASP.NET compiles markup at runtime. Saving `Web.config` restarts the application automatically.
+- **Code-behind and other C#/VB code**: **Stop IIS Express**, then **Debug Profile**, which rebuilds, restarts IIS Express and reattaches.
+
 ## How it works
 
 - **Projects**: C# (`.csproj`) and VB.NET (`.vbproj`) web application projects.
