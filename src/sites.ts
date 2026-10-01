@@ -107,8 +107,9 @@ export function templatePathFor(iisExpressExe: string): string {
 export function renderApplicationHostConfig(template: string, sites: SiteSpec[], options: ConfigOptions): string {
   const hostname = options.bindAllHostnames ? '' : 'localhost';
   const sitesXml = sites.map((site, i) => siteXml(site, i + 1, hostname, options)).join('');
-  const withoutSample = template.replace(/<site\s+name="WebSite1"[\s\S]*?<\/site>\s*/i, '');
-  const insertAt = withoutSample.search(/<siteDefaults[\s>]/i);
+  // Remove and insert whole lines, so the sites keep their indentation and <siteDefaults> keeps its own.
+  const withoutSample = template.replace(/^[ \t]*<site\s+name="WebSite1"[\s\S]*?<\/site>[ \t]*\r?\n/im, '');
+  const insertAt = withoutSample.search(/^[ \t]*<siteDefaults[\s>]/im);
   if (insertAt < 0) throw new Error('Unexpected IIS Express template: no <siteDefaults> element.');
   return withoutSample.slice(0, insertAt) + sitesXml + withoutSample.slice(insertAt);
 }
