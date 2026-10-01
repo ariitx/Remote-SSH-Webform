@@ -63,7 +63,28 @@ All settings are under `remoteSshWebForm.*`: `configuration`, `platform`, `solut
 ```
 npm install
 npm run compile
+npm test          # compiles, then runs the tests
 npm run package   # produces remote-ssh-webform-<version>.vsix
 ```
 
 Press F5 in this folder to launch an Extension Development Host.
+
+### Tests
+
+The tests in [src/test/](src/test/) use Node's built-in test runner (`node:test`), so they need no extra dependencies and no VS Code instance. Each test builds a throwaway project in the temp folder and deletes it afterwards. They aren't packaged into the `.vsix`.
+
+| File | Covers |
+| --- | --- |
+| `designer.test.ts` | Which controls get designer fields (templates, collection items, comments, `<script>` blocks, `<head>` children, code-behind declarations), type resolution, in-place updates, new-file formats, project-file entries |
+| `clrMetadata.test.ts` | Reading public type names from an assembly, and invalid or missing files |
+| `slnLaunch.test.ts` | `.slnLaunch` parsing and generation, `.sln` / `.slnx` project lists, profile ids, web-project detection and `<IISUrl>` lookup |
+| `sites.test.ts` | Resolving a profile to IIS Express sites (ports, app paths, skipped projects), and the generated `applicationhost.config` |
+| `msbuild.test.ts` | The MSBuild task and its PowerShell script; on Windows it runs that script against a stand-in MSBuild, to check the arguments MSBuild really receives (e.g. `SolutionDir` with spaces) |
+| `profiles.test.ts` | Profile discovery, such as a `.slnLaunch.user` replacing its `.slnLaunch` |
+| `util.test.ts` | Quoting, encoding and process helpers |
+
+- `msbuild.ts` and `profiles.ts` import `vscode`, so their tests load [vscodeHook.ts](src/test/vscodeHook.ts) first. It points `vscode` at a small stub ([vscodeStub.ts](src/test/vscodeStub.ts)) that records tasks and serves `findFiles` results.
+- Tests that need Windows, the .NET Framework 4.x assemblies or IIS Express are skipped where those are missing.
+- Not covered: starting and stopping IIS Express processes (`iisexpress.ts`) and the VS Code UI in `extension.ts`. Check those by hand in an Extension Development Host.
+
+Run a single file with `node --test out/test/sites.test.js` after `npm run compile`.

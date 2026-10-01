@@ -40,6 +40,37 @@ export const CSPROJ = [
   '',
 ].join('\r\n');
 
+/** A web application project; `iisUrl` becomes its <IISUrl>. */
+export function webProject(iisUrl?: string): string {
+  return [
+    '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">',
+    '  <PropertyGroup>',
+    '    <ProjectTypeGuids>{349c5851-65df-11da-9384-00065b846f21};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>',
+    '  </PropertyGroup>',
+    '  <ProjectExtensions><VisualStudio><FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}"><WebProjectProperties>',
+    '    <UseIIS>True</UseIIS>',
+    iisUrl ? `    <IISUrl>${iisUrl}</IISUrl>` : '',
+    '  </WebProjectProperties></FlavorProperties></VisualStudio></ProjectExtensions>',
+    '</Project>',
+    '',
+  ].join('\r\n');
+}
+
+/** A class library project (not a web project). */
+export const LIBRARY_PROJECT = '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">\r\n  <PropertyGroup><OutputType>Library</OutputType></PropertyGroup>\r\n</Project>\r\n';
+
+/** A classic .sln listing the given project paths (relative to the solution), plus a solution folder. */
+export function solution(projects: string[]): string {
+  const lines = ['Microsoft Visual Studio Solution File, Format Version 12.00', '# Visual Studio Version 17'];
+  lines.push('Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{11111111-1111-1111-1111-111111111111}"', 'EndProject');
+  projects.forEach((p, i) => {
+    const type = p.endsWith('.vbproj') ? 'F184B08F-C81C-45F6-A57F-5ABD9991F28F' : 'FAE04EC0-301F-11D3-BF4B-00C04F79EFBC';
+    lines.push(`Project("{${type}}") = "${p.replace(/^.*[\\/]|\.\w+$/g, '')}", "${p}", "{00000000-0000-0000-0000-00000000000${i}}"`, 'EndProject');
+  });
+  lines.push('Global', 'EndGlobal', '');
+  return lines.join('\r\n');
+}
+
 /** A page whose directive inherits Web.<className> with a C# code-behind. */
 export function page(className: string, body: string, directive = ''): string {
   return `<%@ Page Language="C#" CodeBehind="${className}.aspx.cs" Inherits="Web.${className}"${directive} %>\n${body}\n`;
