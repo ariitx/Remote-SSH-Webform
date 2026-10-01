@@ -2,7 +2,7 @@
   "name": "remote-ssh-webform",
   "displayName": "Remote SSH WebForm",
   "description": "Build, run and debug classic ASP.NET (.NET Framework Web Forms / Web API) projects under IIS Express from VS Code Remote-SSH, driven by Visual Studio .slnLaunch profiles, and keep Web Forms designer files in sync with the markup.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "AriTrikesuma",
   "engines": {
     "vscode": "^1.90.0"
@@ -116,6 +116,11 @@
           "type": "boolean",
           "default": false,
           "description": "Also build referenced projects. Off by default so unrelated breakage elsewhere in the solution can't block a debug session; referenced assemblies must then already exist from a prior solution build."
+        },
+        "remoteSshWebForm.buildChangedReferences": {
+          "type": "boolean",
+          "default": true,
+          "description": "Before building the profile's projects, build the projects they reference (directly or indirectly) whose files changed since their last build, dependencies first. Unchanged references aren't built. Not needed when buildProjectReferences is on."
         },
         "remoteSshWebForm.buildBeforeRun": {
           "type": "boolean",

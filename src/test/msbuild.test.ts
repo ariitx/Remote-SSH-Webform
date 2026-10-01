@@ -24,6 +24,7 @@ function settings(overrides: Partial<Settings> = {}): Settings {
     restoreBeforeSolutionBuild: true,
     debugType: 'portable',
     buildProjectReferences: false,
+    buildChangedReferences: true,
     buildBeforeRun: true,
     additionalMsbuildArgs: [],
     // Any existing file will do as "MSBuild" unless the task is actually run.
@@ -76,6 +77,20 @@ describe('build tasks', () => {
       `${msbuild} 'C:\\src\\Api\\Api.csproj' ${common}`,
       'if ($LASTEXITCODE -ne 0) { $failed = $LASTEXITCODE }',
       'exit $failed',
+    ]);
+  });
+
+  test('references build first, without their own references, and stop the build when one fails', async () => {
+    await buildProjects(['C:\\src\\Web\\Web.csproj'], 'C:\\src', settings({ buildProjectReferences: true }), ['C:\\src\\Core\\Core.csproj', 'C:\\src\\Data\\Data.csproj']);
+    const lines = script(stub.executed[0]).split('\n').slice(3, -1);
+    assert.deepEqual(lines.filter(l => l.startsWith('Write-Host')), ["Write-Host '==> Core.csproj'", "Write-Host '==> Data.csproj'", "Write-Host '==> Web.csproj'"]);
+    const [core, data, web] = lines.filter(l => l.startsWith('& '));
+    assert.ok(core.includes("'/p:BuildProjectReferences=false'") && data.includes("'/p:BuildProjectReferences=false'"));
+    assert.ok(web.includes("'/p:BuildProjectReferences=true'"));
+    assert.deepEqual(lines.filter(l => l.startsWith('if ')), [
+      'if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }',
+      'if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }',
+      'if ($LASTEXITCODE -ne 0) { $failed = $LASTEXITCODE }',
     ]);
   });
 
@@ -147,5 +162,15 @@ describe('running the generated script', () => {
       else process.env.NoDefaultCurrentDirectoryInExePath = previous;
     }
     assert.deepEqual(received(output.stdout), [['fail'], ['pass', 'unset']]);
+  });
+
+  test('a failed reference skips everything after it', { skip: onWindows }, async () => {
+    const root = makeProject({
+      'fail.js': 'console.log(JSON.stringify(["fail"])); process.exit(5)',
+      'pass.js': 'console.log(JSON.stringify(["pass"]))',
+    });
+    const output = runForReal();
+    assert.equal(await buildProjects([project(root, 'pass.js')], root, settings(), [project(root, 'fail.js'), project(root, 'pass.js')]), false);
+    assert.deepEqual(received(output.stdout), [['fail']]);
   });
 });

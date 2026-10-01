@@ -22,20 +22,28 @@ export async function findMsBuild(settings: Settings): Promise<string> {
   return found;
 }
 
-export async function buildProjects(projectPaths: string[], solutionDir: string, settings: Settings): Promise<boolean> {
-  const invocations = [...new Set(projectPaths)].map(projectPath => [
+/**
+ * Builds the `references` first, in order and without their own references, stopping at the first failure because
+ * the projects after it depend on it. Then builds each project; those all build even if one fails.
+ */
+export async function buildProjects(projectPaths: string[], solutionDir: string, settings: Settings, references: string[] = []): Promise<boolean> {
+  const args = (projectPath: string, buildProjectReferences: boolean) => [
     projectPath,
     '/t:Build',
     `/p:Configuration=${settings.configuration}`,
     `/p:Platform=${settings.platform}`,
     `/p:DebugType=${settings.debugType}`,
     solutionDirProperty(solutionDir),
-    `/p:BuildProjectReferences=${settings.buildProjectReferences}`,
+    `/p:BuildProjectReferences=${buildProjectReferences}`,
     '/m',
     '/nologo',
     '/v:minimal',
     ...settings.additionalMsbuildArgs,
-  ]);
+  ];
+  const invocations: Invocation[] = [
+    ...[...new Set(references)].map(p => ({ args: args(p, false), stopOnFailure: true })),
+    ...[...new Set(projectPaths)].map(p => ({ args: args(p, settings.buildProjectReferences) })),
+  ];
   return runMsBuild('Build', invocations, settings);
 }
 
@@ -53,11 +61,17 @@ export async function buildSolution(solutionPath: string, settings: Settings): P
     ...settings.additionalMsbuildArgs,
   ];
   if (settings.restoreBeforeSolutionBuild) args.push('/restore', '/p:RestorePackagesConfig=true');
-  return runMsBuild('Build Solution', [args], settings);
+  return runMsBuild('Build Solution', [{ args }], settings);
+}
+
+interface Invocation {
+  args: string[];
+  /** Skip the remaining invocations when this one fails. */
+  stopOnFailure?: boolean;
 }
 
 /** Runs the MSBuild invocations in order inside one VS Code task, so output lands in one terminal and $msCompile fills the Problems panel. */
-async function runMsBuild(taskName: string, invocations: string[][], settings: Settings): Promise<boolean> {
+async function runMsBuild(taskName: string, invocations: Invocation[], settings: Settings): Promise<boolean> {
   const msbuild = await findMsBuild(settings);
   const lines = [
     "$ProgressPreference = 'SilentlyContinue'",
@@ -65,10 +79,10 @@ async function runMsBuild(taskName: string, invocations: string[][], settings: S
     'Remove-Item Env:\\NoDefaultCurrentDirectoryInExePath -ErrorAction SilentlyContinue',
     '$failed = 0',
   ];
-  for (const args of invocations) {
+  for (const { args, stopOnFailure } of invocations) {
     lines.push(`Write-Host ${psQuote(`==> ${path.basename(args[0])}`)}`);
     lines.push(`& ${psQuote(msbuild)} ${args.map(psQuote).join(' ')}`);
-    lines.push('if ($LASTEXITCODE -ne 0) { $failed = $LASTEXITCODE }');
+    lines.push(stopOnFailure ? 'if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }' : 'if ($LASTEXITCODE -ne 0) { $failed = $LASTEXITCODE }');
   }
   lines.push('exit $failed');
 

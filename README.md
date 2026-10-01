@@ -53,10 +53,11 @@ Edit and Continue isn't available. For .NET Framework it exists only in Visual S
 - **One IIS Express process per site**, each in its own terminal. IIS Express serves a single site per process.
 - **Non-web projects** in a profile (e.g. `WinExe` tools) are built but not started, with a note in the output.
 - **Build** clears `NoDefaultCurrentDirectoryInExePath` so pre/post-build events that call batch files by bare name don't fail with `MSB3073` / exit `9009`. By default it builds with `BuildProjectReferences=false`, so a broken, unrelated project elsewhere in the solution can't block a debug session.
+- **Changed references** are built first. Before building the profile's projects, the extension follows their `<ProjectReference>`s, including references of references. It builds, dependencies first, every referenced project whose output is missing or older than a file in its folder (minus `bin`, `obj` and nested projects), its project file or a linked file. It also builds every project that depends on one of those. Unchanged references aren't built, and the Remote SSH WebForm output lists what was built and why. If a reference fails to build, the build stops there. Turn it off with `buildChangedReferences`; it's skipped when `buildProjectReferences` is on.
 
 ## Settings
 
-All settings are under `remoteSshWebForm.*`: `configuration`, `platform`, `solutionPlatform`, `restoreBeforeSolutionBuild`, `debugType` (default `portable`, required by the `clr` debugger), `buildProjectReferences`, `buildBeforeRun`, `additionalMsbuildArgs`, `msbuildPath`, `iisExpressPath`, `applicationPool`, `bindAllHostnames`, `justMyCode`, `stopSitesWhenDebuggingStops`, `startupTimeoutSeconds`, `generateDesignerOnSave`.
+All settings are under `remoteSshWebForm.*`: `configuration`, `platform`, `solutionPlatform`, `restoreBeforeSolutionBuild`, `debugType` (default `portable`, required by the `clr` debugger), `buildProjectReferences`, `buildChangedReferences`, `buildBeforeRun`, `additionalMsbuildArgs`, `msbuildPath`, `iisExpressPath`, `applicationPool`, `bindAllHostnames`, `justMyCode`, `stopSitesWhenDebuggingStops`, `startupTimeoutSeconds`, `generateDesignerOnSave`.
 
 ## Development
 

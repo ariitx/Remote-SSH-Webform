@@ -4,6 +4,7 @@ import * as path from 'path';
 import { applyDesigner, isDesignerMarkup, planDesigner } from './designer';
 import { IisExpressManager, RunningSite } from './iisexpress';
 import { buildProjects, buildSolution } from './msbuild';
+import { builtAtKey, findChangedReferences } from './references';
 import { discoverSlnLaunchProfiles, discoverSolutions, discoverSolutionsWithoutSlnLaunch, discoverWebProjectProfiles } from './profiles';
 import { Settings, getSettings } from './settings';
 import { resolveSites } from './sites';
@@ -11,6 +12,7 @@ import { LaunchProfile, findSolutionFile, generateSlnLaunch, profileLabelFromId,
 import { errorMessage } from './util';
 
 const PROFILE_KEY = 'remoteSshWebForm.profileId';
+const BUILT_AT_KEY = 'remoteSshWebForm.referencesBuiltAt';
 
 export function activate(context: vscode.ExtensionContext): void {
   const controller = new Controller(context);
@@ -303,7 +305,29 @@ class Controller implements vscode.Disposable {
   }
 
   private async buildProfile(profile: LaunchProfile, settings: Settings): Promise<boolean> {
-    const ok = await buildProjects(profile.projects.map(p => p.projectPath), profile.solutionDir, settings);
+    const projects = profile.projects.map(p => p.projectPath);
+    const context = { configuration: settings.configuration, platform: settings.platform, solutionDir: profile.solutionDir };
+    let references: string[] = [];
+    if (settings.buildChangedReferences && !settings.buildProjectReferences) {
+      const builtAt = this.context.workspaceState.get<Record<string, number>>(BUILT_AT_KEY, {});
+      const changed = await findChangedReferences(projects, context, builtAt);
+      for (const note of changed.notes) this.output.appendLine(`[build] ${note}`);
+      this.output.appendLine(
+        changed.toBuild.length > 0
+          ? `[build] Building ${changed.toBuild.length} of ${changed.checked.length} referenced project(s) first: ${changed.toBuild.map(p => path.parse(p).name).join(', ')}`
+          : `[build] All ${changed.checked.length} referenced project(s) are up to date.`,
+      );
+      references = changed.toBuild;
+    }
+
+    const startedAt = Date.now();
+    const ok = await buildProjects(projects, profile.solutionDir, settings, references);
+    if (ok && references.length > 0) {
+      // Remembered so files MSBuild doesn't compile (whose change leaves the assembly untouched) don't trigger the build every time.
+      const builtAt = { ...this.context.workspaceState.get<Record<string, number>>(BUILT_AT_KEY, {}) };
+      for (const reference of references) builtAt[builtAtKey(reference, context)] = startedAt;
+      await this.context.workspaceState.update(BUILT_AT_KEY, builtAt);
+    }
     if (!ok) {
       const hint = settings.buildProjectReferences
         ? ''

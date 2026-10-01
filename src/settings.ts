@@ -7,6 +7,7 @@ export interface Settings {
   restoreBeforeSolutionBuild: boolean;
   debugType: string;
   buildProjectReferences: boolean;
+  buildChangedReferences: boolean;
   buildBeforeRun: boolean;
   additionalMsbuildArgs: string[];
   msbuildPath: string;
@@ -28,6 +29,7 @@ export function getSettings(): Settings {
     restoreBeforeSolutionBuild: c.get('restoreBeforeSolutionBuild', true),
     debugType: c.get('debugType', 'portable'),
     buildProjectReferences: c.get('buildProjectReferences', false),
+    buildChangedReferences: c.get('buildChangedReferences', true),
     buildBeforeRun: c.get('buildBeforeRun', true),
     additionalMsbuildArgs: c.get<string[]>('additionalMsbuildArgs', []),
     msbuildPath: c.get('msbuildPath', ''),
