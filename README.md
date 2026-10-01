@@ -12,7 +12,7 @@ The extension runs on the Windows side (`extensionKind: workspace`), so install 
 
 ## Usage
 
-The status bar shows the selected profile plus Debug / Run buttons (or Stop while sites run).
+The status bar shows the selected profile plus Debug / Run buttons (or Stop and Reload while sites run).
 
 - **Select Launch Profile**: lists every profile in `*.slnLaunch` / `*.slnLaunch.user` (the `.user` file wins, as in Visual Studio), plus each IIS Express web project on its own. The choice is remembered per workspace.
   - For a solution (`.sln` / `.slnx`) without a `.slnLaunch`, the list offers **Create `<Solution>.slnLaunch`**. It writes one profile per web project that has an `<IISUrl>`, plus an "All web projects" profile, next to the solution, where Visual Studio also reads it. Edit the file to combine projects into your own profiles.
@@ -21,6 +21,7 @@ The status bar shows the selected profile plus Debug / Run buttons (or Stop whil
 - **Build Profile**: builds only; errors appear in the Problems panel.
 - **Build Solution** (status bar wrench button): builds the whole solution behind the selected profile (or asks which one when that's ambiguous), restoring NuGet packages first. Use it after pulling changes to referenced projects, since the profile builds skip project references by default.
 - **Stop IIS Express**: stops only the IIS Express processes this extension started.
+- **Reload** (status bar restart button, beside Stop): stops the sites, rebuilds the profile (changed references included), starts IIS Express again and, if the sites were started with Debug, reattaches the debugger.
 - **Open Site in Browser**: opens a running site on the client machine, forwarding the port through Remote-SSH.
 - **Regenerate Designer File** (right-click an `.aspx`, `.ascx` or `.master`): brings its `.designer.cs` / `.designer.vb` up to date. This also happens automatically on save; see below.
 
@@ -41,7 +42,7 @@ Turn it off with `remoteSshWebForm.generateDesignerOnSave`.
 Edit and Continue isn't available. For .NET Framework it exists only in Visual Studio; the VS Code `clr` debugger doesn't support it, and C# Hot Reload in VS Code covers .NET 6+ only. How to get changes into a running site:
 
 - **Markup** (`.aspx`, `.ascx`, `.master`), JavaScript and CSS: save and refresh the browser. ASP.NET compiles markup at runtime. Saving `Web.config` restarts the application automatically.
-- **Code-behind and other C#/VB code**: **Stop IIS Express**, then **Debug Profile**, which rebuilds, restarts IIS Express and reattaches.
+- **Code-behind and other C#/VB code**: press **Reload**, which stops IIS Express, rebuilds, restarts it and reattaches.
 
 ## How it works
 

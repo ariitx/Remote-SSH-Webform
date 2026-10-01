@@ -24,6 +24,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('remoteSshWebForm.run', () => controller.start(false)),
     vscode.commands.registerCommand('remoteSshWebForm.debug', () => controller.start(true)),
     vscode.commands.registerCommand('remoteSshWebForm.stop', () => controller.stop()),
+    vscode.commands.registerCommand('remoteSshWebForm.reload', () => controller.reload()),
     vscode.commands.registerCommand('remoteSshWebForm.openBrowser', () => controller.openBrowser()),
     vscode.commands.registerCommand('remoteSshWebForm.generateDesigner', (uri?: vscode.Uri) => controller.generateDesigner(uri)),
   );
@@ -38,10 +39,13 @@ class Controller implements vscode.Disposable {
   private readonly debugItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 49);
   private readonly runItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 48);
   private readonly stopItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 47);
+  private readonly reloadItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 46.5);
   private readonly buildSolutionItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 46);
   private readonly disposables: vscode.Disposable[] = [];
   private readonly ourDebugSessions = new Set<string>();
   private stopWhenDebuggingEnds = false;
+  /** Whether the running sites were started by Debug rather than Run, so Reload restarts them the same way. */
+  private startedWithDebugging = true;
   private busy = false;
 
   constructor(private readonly context: vscode.ExtensionContext) {
@@ -56,6 +60,9 @@ class Controller implements vscode.Disposable {
     this.runItem.tooltip = 'Remote SSH WebForm: build and run the selected profile without debugging';
     this.stopItem.command = 'remoteSshWebForm.stop';
     this.stopItem.tooltip = 'Remote SSH WebForm: stop the IIS Express sites it started';
+    this.reloadItem.command = 'remoteSshWebForm.reload';
+    this.reloadItem.text = '$(debug-restart)';
+    this.reloadItem.tooltip = 'Remote SSH WebForm: stop, rebuild and restart the selected profile, reattaching the debugger if it was debugging';
     this.buildSolutionItem.command = 'remoteSshWebForm.buildSolution';
     this.buildSolutionItem.text = '$(tools)';
     this.buildSolutionItem.tooltip = "Remote SSH WebForm: build the selected profile's whole solution";
@@ -67,6 +74,7 @@ class Controller implements vscode.Disposable {
       this.debugItem,
       this.runItem,
       this.stopItem,
+      this.reloadItem,
       this.buildSolutionItem,
       this.iis.onDidChange(() => this.refreshStatus()),
       vscode.debug.onDidStartDebugSession(session => this.trackSession(session)),
@@ -161,6 +169,7 @@ class Controller implements vscode.Disposable {
       const profile = await this.ensureProfile();
       if (!profile) return;
       const settings = getSettings();
+      this.startedWithDebugging = debug;
 
       // Forget sessions from a previous run first, so their termination can't stop the new sites.
       this.stopWhenDebuggingEnds = false;
@@ -188,6 +197,11 @@ class Controller implements vscode.Disposable {
       }
       this.announce(started);
     });
+  }
+
+  /** Stops the sites, rebuilds and starts them again, in the mode (Debug or Run) they were started with. */
+  reload(): Promise<void> {
+    return this.start(this.startedWithDebugging);
   }
 
   async stop(): Promise<void> {
@@ -409,11 +423,13 @@ class Controller implements vscode.Disposable {
     if (running > 0) {
       this.stopItem.text = `$(debug-stop) IIS Express (${running})`;
       this.stopItem.show();
+      this.reloadItem.show();
       this.debugItem.hide();
       this.runItem.hide();
       return;
     }
     this.stopItem.hide();
+    this.reloadItem.hide();
     this.debugItem.text = this.busy ? '$(sync~spin)' : '$(debug-alt)';
     this.debugItem.show();
     if (this.busy) this.runItem.hide();
