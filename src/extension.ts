@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { applyDesigner, isDesignerMarkup, planDesigner } from './designer';
 import { IisExpressManager, RunningSite } from './iisexpress';
 import { buildProjects, buildSolution } from './msbuild';
 import { discoverSlnLaunchProfiles, discoverSolutions, discoverSolutionsWithoutSlnLaunch, discoverWebProjectProfiles } from './profiles';
@@ -22,6 +23,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('remoteSshWebForm.debug', () => controller.start(true)),
     vscode.commands.registerCommand('remoteSshWebForm.stop', () => controller.stop()),
     vscode.commands.registerCommand('remoteSshWebForm.openBrowser', () => controller.openBrowser()),
+    vscode.commands.registerCommand('remoteSshWebForm.generateDesigner', (uri?: vscode.Uri) => controller.generateDesigner(uri)),
   );
 }
 
@@ -67,6 +69,9 @@ class Controller implements vscode.Disposable {
       this.iis.onDidChange(() => this.refreshStatus()),
       vscode.debug.onDidStartDebugSession(session => this.trackSession(session)),
       vscode.debug.onDidTerminateDebugSession(session => this.onSessionEnded(session)),
+      vscode.workspace.onDidSaveTextDocument(doc => {
+        if (doc.uri.scheme === 'file' && isDesignerMarkup(doc.fileName) && getSettings().generateDesignerOnSave) this.updateDesigner(doc.fileName, false);
+      }),
     );
     this.refreshStatus();
   }
@@ -208,6 +213,50 @@ class Controller implements vscode.Disposable {
     // asExternalUri forwards the port through Remote-SSH, so localhost works on the client machine.
     const uri = await vscode.env.asExternalUri(vscode.Uri.parse(site.spec.url));
     await vscode.env.openExternal(uri);
+  }
+
+  async generateDesigner(uri?: vscode.Uri): Promise<void> {
+    const file = uri?.fsPath ?? vscode.window.activeTextEditor?.document.fileName;
+    if (!file || !isDesignerMarkup(file)) {
+      vscode.window.showWarningMessage('Remote SSH WebForm: open or select an .aspx, .ascx or .master file to regenerate its designer file.');
+      return;
+    }
+    const doc = vscode.workspace.textDocuments.find(d => d.fileName === file);
+    // Saving regenerates it through the on-save handler when that is enabled.
+    const savedNow = !!doc?.isDirty && (await doc.save());
+    if (!savedNow || !getSettings().generateDesignerOnSave) this.updateDesigner(file, true);
+  }
+
+  /** Brings <markup>.designer.cs/.vb in line with the markup's server controls, as Visual Studio does on save. */
+  private updateDesigner(markupPath: string, explicit: boolean): void {
+    const name = path.basename(markupPath);
+    try {
+      const plan = planDesigner(markupPath);
+      if ('skipped' in plan) {
+        if (explicit) vscode.window.showInformationMessage(`Remote SSH WebForm: no designer file for ${name}: ${plan.skipped}.`);
+        return;
+      }
+      const designerName = path.basename(plan.designerPath);
+      for (const warning of plan.warnings) this.output.appendLine(`[designer] ${name}: ${warning}`);
+      if (plan.content === undefined) {
+        if (explicit) vscode.window.showInformationMessage(`${designerName} is already up to date (${plan.fields.length} field(s)).`);
+      } else {
+        const notes = applyDesigner(plan);
+        this.output.appendLine(`[designer] ${plan.created ? 'Created' : 'Updated'} ${plan.designerPath} (${plan.fields.length} field(s)).`);
+        for (const note of notes) this.output.appendLine(`[designer] ${note}`);
+        vscode.window.setStatusBarMessage(`$(check) ${plan.created ? 'Created' : 'Updated'} ${designerName}`, 4000);
+      }
+      if (plan.warnings.length > 0) {
+        void vscode.window
+          .showWarningMessage(`${designerName}: ${plan.warnings.length} control(s) got no field because their type wasn't found.`, 'Show Output')
+          .then(choice => {
+            if (choice) this.output.show();
+          });
+      }
+    } catch (error) {
+      this.output.appendLine(`[error] Designer for ${name}: ${errorMessage(error)}`);
+      if (explicit) vscode.window.showErrorMessage(`Remote SSH WebForm: could not regenerate the designer for ${name}: ${errorMessage(error)}`);
+    }
   }
 
   private async createSlnLaunch(solutionPath: string): Promise<boolean> {

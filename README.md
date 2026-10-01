@@ -22,6 +22,19 @@ The status bar shows the selected profile plus Debug / Run buttons (or Stop whil
 - **Build Solution** (status bar wrench button): builds the whole solution behind the selected profile (or asks which one when that's ambiguous), restoring NuGet packages first. Use it after pulling changes to referenced projects, since the profile builds skip project references by default.
 - **Stop IIS Express**: stops only the IIS Express processes this extension started.
 - **Open Site in Browser**: opens a running site on the client machine, forwarding the port through Remote-SSH.
+- **Regenerate Designer File** (right-click an `.aspx`, `.ascx` or `.master`): brings its `.designer.cs` / `.designer.vb` up to date. This also happens automatically on save; see below.
+
+## Designer files
+
+Visual Studio keeps `Foo.aspx.designer.cs` in sync with the markup; VS Code doesn't. With this extension, saving an `.aspx`, `.ascx` or `.master` updates its designer file the same way, so a control you add in the markup can be used from the code-behind straight away.
+
+- **Which controls get a field**: every server control with an `ID`, plus ID'd collection items such as DevExpress custom buttons. Controls inside templates (`ItemTemplate`, `DataItemTemplate`, DevExpress `<Templates>`, …) don't, because ASP.NET creates them once per row; use `FindControl` for those. `UpdatePanel`'s `ContentTemplate` is the exception, as in Visual Studio. A field the code-behind already declares is left out.
+- **Types** come from `<%@ Register %>` directives, `web.config` `<pages><controls>`, the `Inherits` of registered user controls, and the type names in the referenced assemblies (project `bin`, `HintPath`, the .NET Framework folder and the GAC). When a prefix maps to several namespaces, as DevExpress's `dx` often does, the assembly that defines the type wins.
+- **Existing files are edited in place**: existing fields keep their order, new ones are appended, removed ones are dropped, and the header and formatting stay as they are. A designer file whose fields already match isn't touched.
+- **New pages**: when the designer file doesn't exist yet (the page needs a `CodeBehind` attribute), it is created in Visual Studio 2022's format and added to the `.csproj` / `.vbproj` with `<DependentUpon>`. Add the page and its code-behind to the project yourself.
+- **Not handled**: `<%@ MasterType %>` / `<%@ PreviousPageType %>` properties, and Web Site projects (`CodeFile`), which have no designer files. If a control's type can't be resolved, it gets no field and the Remote SSH WebForm output says why.
+
+Turn it off with `remoteSshWebForm.generateDesignerOnSave`.
 
 ## Changing code while debugging
 
@@ -43,7 +56,7 @@ Edit and Continue isn't available. For .NET Framework it exists only in Visual S
 
 ## Settings
 
-All settings are under `remoteSshWebForm.*`: `configuration`, `platform`, `solutionPlatform`, `restoreBeforeSolutionBuild`, `debugType` (default `portable`, required by the `clr` debugger), `buildProjectReferences`, `buildBeforeRun`, `additionalMsbuildArgs`, `msbuildPath`, `iisExpressPath`, `applicationPool`, `bindAllHostnames`, `justMyCode`, `stopSitesWhenDebuggingStops`, `startupTimeoutSeconds`.
+All settings are under `remoteSshWebForm.*`: `configuration`, `platform`, `solutionPlatform`, `restoreBeforeSolutionBuild`, `debugType` (default `portable`, required by the `clr` debugger), `buildProjectReferences`, `buildBeforeRun`, `additionalMsbuildArgs`, `msbuildPath`, `iisExpressPath`, `applicationPool`, `bindAllHostnames`, `justMyCode`, `stopSitesWhenDebuggingStops`, `startupTimeoutSeconds`, `generateDesignerOnSave`.
 
 ## Development
 

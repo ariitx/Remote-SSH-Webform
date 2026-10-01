@@ -1,8 +1,8 @@
 {
   "name": "remote-ssh-webform",
   "displayName": "Remote SSH WebForm",
-  "description": "Build, run and debug classic ASP.NET (.NET Framework Web Forms / Web API) projects under IIS Express from VS Code Remote-SSH, driven by Visual Studio .slnLaunch profiles.",
-  "version": "0.3.0",
+  "description": "Build, run and debug classic ASP.NET (.NET Framework Web Forms / Web API) projects under IIS Express from VS Code Remote-SSH, driven by Visual Studio .slnLaunch profiles, and keep Web Forms designer files in sync with the markup.",
+  "version": "0.4.0",
   "publisher": "AriTrikesuma",
   "engines": {
     "vscode": "^1.90.0"
@@ -63,6 +63,11 @@
       {
         "command": "remoteSshWebForm.openBrowser",
         "title": "Open Site in Browser",
+        "category": "Remote SSH WebForm"
+      },
+      {
+        "command": "remoteSshWebForm.generateDesigner",
+        "title": "Regenerate Designer File",
         "category": "Remote SSH WebForm"
       }
     ],
@@ -163,8 +168,29 @@
           "type": "number",
           "default": 60,
           "description": "How long to wait for each IIS Express site to report it is running."
+        },
+        "remoteSshWebForm.generateDesignerOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "When an .aspx, .ascx or .master file is saved, update its .designer.cs/.vb with a field for each server control, as Visual Studio does."
         }
       }
+    },
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "remoteSshWebForm.generateDesigner",
+          "when": "resourceExtname =~ /^.(aspx|ascx|master)$/i",
+          "group": "7_modification"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "remoteSshWebForm.generateDesigner",
+          "when": "resourceExtname =~ /^.(aspx|ascx|master)$/i",
+          "group": "1_modification"
+        }
+      ]
     }
   },
   "scripts": {

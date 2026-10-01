@@ -16,6 +16,7 @@ export interface Settings {
   justMyCode: boolean;
   stopSitesWhenDebuggingStops: boolean;
   startupTimeoutSeconds: number;
+  generateDesignerOnSave: boolean;
 }
 
 export function getSettings(): Settings {
@@ -36,5 +37,6 @@ export function getSettings(): Settings {
     justMyCode: c.get('justMyCode', true),
     stopSitesWhenDebuggingStops: c.get('stopSitesWhenDebuggingStops', true),
     startupTimeoutSeconds: c.get('startupTimeoutSeconds', 60),
+    generateDesignerOnSave: c.get('generateDesignerOnSave', true),
   };
 }
