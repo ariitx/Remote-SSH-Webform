@@ -1,8 +1,8 @@
 {
   "name": "remote-ssh-webform",
   "displayName": "Remote SSH WebForm",
-  "description": "Build, run and debug classic ASP.NET (.NET Framework Web Forms / Web API) projects under IIS Express from VS Code Remote-SSH, driven by Visual Studio .slnLaunch profiles, and keep Web Forms designer files in sync with the markup.",
-  "version": "0.7.0",
+  "description": "Build, run and debug classic ASP.NET (.NET Framework Web Forms / Web API) projects under IIS Express from VS Code Remote-SSH, driven by Visual Studio .slnLaunch profiles, keep Web Forms designer files in sync with the markup, and view DataTables, DataSets, lists and dictionaries as tables while debugging.",
+  "version": "0.8.0",
   "publisher": "AriTrikesuma",
   "engines": {
     "vscode": "^1.90.0"
@@ -80,6 +80,18 @@
         "command": "remoteSshWebForm.toggleCodeBehind",
         "title": "Toggle Markup / Code-Behind",
         "category": "Remote SSH WebForm"
+      },
+      {
+        "command": "remoteSshWebForm.visualizeVariable",
+        "title": "Visualize as Table",
+        "category": "Remote SSH WebForm",
+        "icon": "$(table)"
+      },
+      {
+        "command": "remoteSshWebForm.visualizeExpression",
+        "title": "Visualize Expression as Table...",
+        "category": "Remote SSH WebForm",
+        "icon": "$(table)"
       }
     ],
     "taskDefinitions": [
@@ -189,6 +201,13 @@
           "type": "boolean",
           "default": true,
           "description": "When an .aspx, .ascx or .master file is saved, update its .designer.cs/.vb with a field for each server control, as Visual Studio does."
+        },
+        "remoteSshWebForm.tableVisualizer.maxRows": {
+          "type": "integer",
+          "default": 1000,
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Most rows Visualize as Table reads per table or collection. The total count is still shown. Large values make reading and rendering slower."
         }
       }
     },
@@ -212,10 +231,32 @@
           "group": "navigation"
         }
       ],
+      "debug/variables/context": [
+        {
+          "command": "remoteSshWebForm.visualizeVariable",
+          "when": "debugType =~ /^(clr|coreclr)$/ && variableEvaluateNamePresent && variableType =~ /DataTable|DataSet|DataView|\\[,*\\]|List|Dictionary|Collection|Enumerable|Queryable|Set<|Queue<|Stack<|Array|Hashtable|Lookup|Iterator|Bag</",
+          "group": "z_commands"
+        }
+      ],
+      "debug/watch/context": [
+        {
+          "command": "remoteSshWebForm.visualizeVariable",
+          "when": "debugType =~ /^(clr|coreclr)$/ && variableType =~ /DataTable|DataSet|DataView|\\[,*\\]|List|Dictionary|Collection|Enumerable|Queryable|Set<|Queue<|Stack<|Array|Hashtable|Lookup|Iterator|Bag</",
+          "group": "z_commands"
+        }
+      ],
       "commandPalette": [
         {
           "command": "remoteSshWebForm.toggleCodeBehind",
           "when": "resourceFilename =~ /\\.(aspx|ascx|master|asmx|ashx|asax)(\\.designer)?(\\.(cs|vb))?$/i"
+        },
+        {
+          "command": "remoteSshWebForm.visualizeVariable",
+          "when": "false"
+        },
+        {
+          "command": "remoteSshWebForm.visualizeExpression",
+          "when": "inDebugMode && debugType =~ /^(clr|coreclr)$/"
         }
       ]
     },
@@ -228,10 +269,11 @@
     ]
   },
   "scripts": {
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && npm run compile:debuggee",
+    "compile:debuggee": "dotnet build debuggee/TableVisualizer.Debuggee.csproj -c Release -nologo -v q",
     "watch": "tsc -watch -p ./",
     "test": "tsc -p ./ && node --test \"out/test/**/*.test.js\"",
-    "package": "vsce package --skip-license --allow-missing-repository"
+    "package": "vsce package --skip-license --allow-missing-repository --baseContentUrl https://github.com/ariitx/Remote-SSH-Webform/blob/main"
   },
   "devDependencies": {
     "@types/node": "20.x",

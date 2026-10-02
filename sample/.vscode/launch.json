@@ -1,0 +1,31 @@
+{
+  // Open the sample folder in VS Code (or in the Extension Development Host), set a breakpoint on a "BREAK" line,
+  // and start one of these. Then right-click a variable in Run and Debug > Variables > Visualize as Table.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C# sample (.NET 9, coreclr)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build samples",
+      "program": "${workspaceFolder}/TableVisualizerSample/bin/Debug/net9.0/TableVisualizerSample.dll",
+      "console": "internalConsole"
+    },
+    {
+      "name": "C# sample (.NET Framework 4.8, clr)",
+      "type": "clr",
+      "request": "launch",
+      "preLaunchTask": "build samples",
+      "program": "${workspaceFolder}/TableVisualizerSample/bin/Debug/net48/TableVisualizerSample.exe",
+      "console": "internalConsole"
+    },
+    {
+      "name": "VB.NET sample (.NET Framework 4.8, clr)",
+      "type": "clr",
+      "request": "launch",
+      "preLaunchTask": "build samples",
+      "program": "${workspaceFolder}/TableVisualizerSampleVb/bin/Debug/net48/TableVisualizerSampleVb.exe",
+      "console": "internalConsole"
+    }
+  ]
+}

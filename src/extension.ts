@@ -10,6 +10,7 @@ import { Settings, getSettings } from './settings';
 import { resolveSites } from './sites';
 import { LaunchProfile, findSolutionFile, generateSlnLaunch, profileLabelFromId, resolveProfileById, slnLaunchPathFor } from './slnLaunch';
 import { errorMessage } from './util';
+import { registerTableVisualizer } from './visualizer/visualizer';
 
 const PROFILE_KEY = 'remoteSshWebForm.profileId';
 const BUILT_AT_KEY = 'remoteSshWebForm.referencesBuiltAt';
@@ -29,6 +30,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('remoteSshWebForm.generateDesigner', (uri?: vscode.Uri) => controller.generateDesigner(uri)),
     vscode.commands.registerCommand('remoteSshWebForm.toggleCodeBehind', (uri?: vscode.Uri) => toggleCodeBehind(uri)),
   );
+  registerTableVisualizer(context);
 }
 
 export function deactivate(): void {}

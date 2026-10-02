@@ -1,3 +1,7 @@
 node_modules/
 out/
 *.vsix
+debuggee/bin/
+debuggee/obj/
+sample/**/bin/
+sample/**/obj/

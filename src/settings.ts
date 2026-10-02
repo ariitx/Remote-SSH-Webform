@@ -18,6 +18,7 @@ export interface Settings {
   stopSitesWhenDebuggingStops: boolean;
   startupTimeoutSeconds: number;
   generateDesignerOnSave: boolean;
+  tableVisualizerMaxRows: number;
 }
 
 export function getSettings(): Settings {
@@ -40,5 +41,6 @@ export function getSettings(): Settings {
     stopSitesWhenDebuggingStops: c.get('stopSitesWhenDebuggingStops', true),
     startupTimeoutSeconds: c.get('startupTimeoutSeconds', 60),
     generateDesignerOnSave: c.get('generateDesignerOnSave', true),
+    tableVisualizerMaxRows: Math.max(1, Math.floor(c.get('tableVisualizer.maxRows', 1000))),
   };
 }

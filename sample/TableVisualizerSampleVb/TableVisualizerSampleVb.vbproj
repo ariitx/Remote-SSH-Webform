@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net9.0;net48</TargetFrameworks>
+    <RootNamespace>TableVisualizerSampleVb</RootNamespace>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+
+  <!-- On Windows ARM64, an AnyCPU .NET Framework exe runs as emulated x64, which the ARM64 debugger can't debug. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net48' and '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">
+    <PlatformTarget>ARM64</PlatformTarget>
+  </PropertyGroup>
+
+</Project>

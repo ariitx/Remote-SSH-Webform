@@ -24,6 +24,7 @@ The status bar shows the selected profile plus Debug / Run buttons (or Stop and 
 - **Reload** (status bar restart button, beside Stop): stops the sites, rebuilds the profile (changed references included), starts IIS Express again and, if the sites were started with Debug, reattaches the debugger.
 - **Open Site in Browser**: opens a running site on the client machine, forwarding the port through Remote-SSH.
 - **Regenerate Designer File** (right-click an `.aspx`, `.ascx` or `.master`): brings its `.designer.cs` / `.designer.vb` up to date. This also happens automatically on save; see below.
+- **Visualize as Table** (right-click a variable or watch while debugging): shows a DataTable, DataSet, list, array or dictionary as a sortable, filterable table; see below.
 - **Toggle Markup / Code-Behind** (F7, or right-click in the editor): switches between an `.aspx`, `.ascx`, `.master`, `.asmx`, `.ashx` or `.asax` and its code-behind, like Visual Studio's View Code. It follows the `CodeBehind` / `CodeFile` attribute, falling back to `<markup>.cs` / `.vb`. From a code-behind or `.designer` file it goes back to the markup. On a Mac keyboard, press fn+F7 unless the function keys are set as standard keys.
 
 ## Designer files
@@ -37,6 +38,36 @@ Visual Studio keeps `Foo.aspx.designer.cs` in sync with the markup; VS Code does
 - **Not handled**: `<%@ MasterType %>` / `<%@ PreviousPageType %>` properties, and Web Site projects (`CodeFile`), which have no designer files. If a control's type can't be resolved, it gets no field and the Remote SSH WebForm output says why.
 
 Turn it off with `remoteSshWebForm.generateDesignerOnSave`.
+
+## Visualize as Table
+
+VS Code has no equivalent of Visual Studio's DataSet and collection visualizers. While a .NET debug session is paused (`clr` or `coreclr`, C# or VB.NET), this one shows a value as a table:
+
+- **Right-click a variable** in Run and Debug > Variables or Watch > **Visualize as Table**. The item appears for collection-like types.
+- Or run **Visualize Expression as Table...** from the Command Palette and type a C# expression (the editor selection is suggested). The debugger evaluates C# syntax even in VB.NET code, and names are case-sensitive.
+
+Each expression gets one table, which opens beside the editor. It reads the value again whenever the debugger stops (after a step, at the next breakpoint) and on **Refresh**. While the program runs, or after the session ends, it keeps the last values and says so.
+
+**Supported values**: `DataTable` (typed tables too), `DataSet` (one tab per table), `DataView` (rows after its filter and sort), `DataRow[]` (e.g. `table.Select(...)`), arrays, `List<T>`, `Dictionary<TKey, TValue>` (Key / Value columns) and any other `IEnumerable`, including LINQ queries. Objects get a column per public property and field; scalars get a Value column. Nulls, empty tables and errors show a message instead.
+
+**In the table**: click a header to sort (again to reverse, a third time for the original order); type in Filter rows to keep the rows containing the text. Column headers show the CLR type. Nested objects and collections show as one line of JSON; click ▸ to expand. Right-click a cell to copy it, its row, its column or the table as tab-separated text (Ctrl+C copies the selected cell). **Copy** and **Export CSV** use the rows shown, in the order shown.
+
+**Rows**: the first `remoteSshWebForm.tableVisualizer.maxRows` (default 1000) rows or items are read, and the total count is shown. A sequence without a `Count` is read only up to that limit, so its total shows as "more".
+
+**How it reads values**: through the debugger's `evaluate` request, in the stack frame selected in Call Stack.
+
+- **The helper assembly** comes first. On the first read in a process, a small assembly built from [debuggee/](debuggee/) is loaded into the debugged program (`Assembly.LoadFrom`), and each read is one call into it. This is how Visual Studio's own visualizers work. It reads 1,000 objects in about 0.1 s, catches exceptions from property getters per cell (shown as `(Name threw ...)`), and stops at reference cycles and after three nesting levels. The assembly is loaded from a copy in the temp folder, so a running IIS Express doesn't lock the extension's files. It stays loaded until the program exits.
+- **Debugger expressions** are the fallback when the helper can't be loaded, for example when the program runs on another machine. They use System.Text.Json or Newtonsoft.Json if the program has already loaded them, and otherwise a reflection expression. They are slower: about 6 s for 1,000 objects. In this mode nested objects show only their type name.
+
+**Limitations**
+
+- VS Code's own debug visualizer API (`registerDebugVisualizationProvider`) is still a proposed API that Marketplace extensions can't use. So the entry point is a context-menu item instead of an inline button.
+- Reading a value runs code in the program: property getters, and the query behind a LINQ or `IQueryable` value. Anything a getter does (lazy loading, logging) happens, just as when you expand the value in Variables.
+- Strings longer than 10,000 characters are cut. 64-bit integers and decimals are shown as text, so they keep their precision; they still sort as numbers.
+- With the fallback on .NET Framework (`clr`), vsdbg evaluates larger expressions unreliably. Tables and lists may then fail to read, with the reason shown. The helper path doesn't have this problem.
+- The debugger has to be able to run code where it is stopped, so a value can't be read in optimized code or while a native frame is on top of the stack.
+
+The [sample/](sample/) folder has a console program with a DataTable, a DataSet, a DataView, lists (including one with 5,000 items), dictionaries, arrays and null values, in C# for .NET 9 and .NET Framework 4.8, and in VB.NET. Open the folder, set a breakpoint on a `BREAK` line and start one of its launch configurations.
 
 ## Changing code while debugging
 
@@ -59,7 +90,7 @@ Edit and Continue isn't available. For .NET Framework it exists only in Visual S
 
 ## Settings
 
-All settings are under `remoteSshWebForm.*`: `configuration`, `platform`, `solutionPlatform`, `restoreBeforeSolutionBuild`, `debugType` (default `portable`, required by the `clr` debugger), `buildProjectReferences`, `buildChangedReferences`, `buildBeforeRun`, `additionalMsbuildArgs`, `msbuildPath`, `iisExpressPath`, `applicationPool`, `bindAllHostnames`, `justMyCode`, `stopSitesWhenDebuggingStops`, `startupTimeoutSeconds`, `generateDesignerOnSave`.
+All settings are under `remoteSshWebForm.*`: `configuration`, `platform`, `solutionPlatform`, `restoreBeforeSolutionBuild`, `debugType` (default `portable`, required by the `clr` debugger), `buildProjectReferences`, `buildChangedReferences`, `buildBeforeRun`, `additionalMsbuildArgs`, `msbuildPath`, `iisExpressPath`, `applicationPool`, `bindAllHostnames`, `justMyCode`, `stopSitesWhenDebuggingStops`, `startupTimeoutSeconds`, `generateDesignerOnSave`, `tableVisualizer.maxRows`.
 
 ## Development
 
@@ -70,7 +101,9 @@ npm test          # compiles, then runs the tests
 npm run package   # produces remote-ssh-webform-<version>.vsix
 ```
 
-Press F5 in this folder to launch an Extension Development Host.
+`npm run compile` also builds the table visualizer's helper assembly ([debuggee/](debuggee/), into `out/debuggee/`), so it needs the .NET SDK. `npm run compile:debuggee` builds only that.
+
+Press F5 in this folder to launch an Extension Development Host. To try Visualize as Table there, open [sample/](sample/) in it and start one of its launch configurations.
 
 ### Tests
 
@@ -85,9 +118,13 @@ The tests in [src/test/](src/test/) use Node's built-in test runner (`node:test`
 | `msbuild.test.ts` | The MSBuild task and its PowerShell script; on Windows it runs that script against a stand-in MSBuild, to check the arguments MSBuild really receives (e.g. `SolutionDir` with spaces) |
 | `profiles.test.ts` | Profile discovery, such as a `.slnLaunch.user` replacing its `.slnLaunch` |
 | `util.test.ts` | Quoting, encoding and process helpers |
+| `visualizerSerializers.test.ts` | The C# expressions Visualize as Table evaluates: well-formed, the user's expression evaluated once, lambda parameters that can't clash with locals, LINQ called statically, the row limit, the helper call |
+| `visualizerPayload.test.ts` | Decoding the debugger's C# string literals, telling values from compile errors and exceptions, type detection (typed DataTables, dictionaries, arrays), laying out rows and columns, readable type names |
+| `visualizerInspect.test.ts` | Reading a value against a scripted debugger: the helper, falling back to expressions, skipping serializers whose library isn't loaded, counting sequences without `Count`, and the messages for null, out-of-scope, unsupported and failing values |
+| `tableCore.test.ts` | The table page's logic: cell text, numeric and text sorting with empty values last, filtering, TSV and CSV |
 
 - `msbuild.ts` and `profiles.ts` import `vscode`, so their tests load [vscodeHook.ts](src/test/vscodeHook.ts) first. It points `vscode` at a small stub ([vscodeStub.ts](src/test/vscodeStub.ts)) that records tasks and serves `findFiles` results.
 - Tests that need Windows, the .NET Framework 4.x assemblies or IIS Express are skipped where those are missing.
-- Not covered: starting and stopping IIS Express processes (`iisexpress.ts`) and the VS Code UI in `extension.ts`. Check those by hand in an Extension Development Host.
+- Not covered: starting and stopping IIS Express processes (`iisexpress.ts`), the VS Code UI in `extension.ts`, and the table visualizer's webview and its real debugger sessions. Check those by hand in an Extension Development Host, with the [sample](sample/) for the visualizer.
 
 Run a single file with `node --test out/test/sites.test.js` after `npm run compile`.

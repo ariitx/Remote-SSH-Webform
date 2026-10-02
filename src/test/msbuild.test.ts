@@ -36,6 +36,7 @@ function settings(overrides: Partial<Settings> = {}): Settings {
     stopSitesWhenDebuggingStops: true,
     startupTimeoutSeconds: 60,
     generateDesignerOnSave: true,
+    tableVisualizerMaxRows: 1000,
     ...overrides,
   };
 }

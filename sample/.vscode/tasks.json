@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build samples",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/TableVisualizerSamples.sln", "-nologo", "-v", "q"],
+      "problemMatcher": "$msCompile",
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
+}

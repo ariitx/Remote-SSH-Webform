@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Loaded into the debugged process by "Visualize as Table" (see src/visualizer/serializers.ts, helperExpression).
+    net40 serves .NET Framework (the "clr" debugger), netstandard2.0 serves .NET Core / .NET 5+ ("coreclr").
+    Built by `npm run compile` into out/debuggee/<target framework>/.
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>net40;netstandard2.0</TargetFrameworks>
+    <AssemblyName>RemoteSshWebForm.TableVisualizer</AssemblyName>
+    <RootNamespace>RemoteSshWebForm.TableVisualizer</RootNamespace>
+    <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <DebugType>none</DebugType>
+    <Deterministic>true</Deterministic>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <OutputPath>$(MSBuildThisFileDirectory)..\out\debuggee\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net40'">
+    <Reference Include="System.Data" />
+  </ItemGroup>
+
+</Project>

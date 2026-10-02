@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- net9.0 debugs with the "coreclr" debugger, net48 with "clr" (as the Web Forms sites do). -->
+    <TargetFrameworks>net9.0;net48</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+
+  <!-- Present but not loaded until something uses it, as in many apps: the visualizer then reads lists with its built-in
+       serializer. Evaluate System.Reflection.Assembly.Load("Newtonsoft.Json") in the Debug Console to try that path. -->
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <!-- On Windows ARM64, an AnyCPU .NET Framework exe runs as emulated x64, which the ARM64 debugger can't debug. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net48' and '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">
+    <PlatformTarget>ARM64</PlatformTarget>
+  </PropertyGroup>
+
+</Project>
