@@ -2,7 +2,7 @@
   "name": "remote-ssh-webform",
   "displayName": "Remote SSH WebForm",
   "description": "Build, run and debug classic ASP.NET (.NET Framework Web Forms / Web API) projects under IIS Express from VS Code Remote-SSH, driven by Visual Studio .slnLaunch profiles, keep Web Forms designer files in sync with the markup, and view DataTables, DataSets, lists and dictionaries as tables while debugging.",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "publisher": "AriTrikesuma",
   "engines": {
     "vscode": "^1.90.0"
@@ -20,7 +20,9 @@
   "activationEvents": [
     "workspaceContains:**/*.slnLaunch",
     "workspaceContains:**/*.csproj",
-    "workspaceContains:**/*.vbproj"
+    "workspaceContains:**/*.vbproj",
+    "onDebugResolve:clr",
+    "onDebugResolve:coreclr"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -90,6 +92,12 @@
       {
         "command": "remoteSshWebForm.visualizeExpression",
         "title": "Visualize Expression as Table...",
+        "category": "Remote SSH WebForm",
+        "icon": "$(table)"
+      },
+      {
+        "command": "remoteSshWebForm.visualizeAtCursor",
+        "title": "Visualize as Table",
         "category": "Remote SSH WebForm",
         "icon": "$(table)"
       }
@@ -229,6 +237,11 @@
           "command": "remoteSshWebForm.toggleCodeBehind",
           "when": "resourceFilename =~ /\\.(aspx|ascx|master|asmx|ashx|asax)(\\.designer)?(\\.(cs|vb))?$/i",
           "group": "navigation"
+        },
+        {
+          "command": "remoteSshWebForm.visualizeAtCursor",
+          "when": "debugState == 'stopped' && debugType =~ /^(clr|coreclr)$/ && editorLangId =~ /^(csharp|vb)$/",
+          "group": "debug@10"
         }
       ],
       "debug/variables/context": [
@@ -236,6 +249,11 @@
           "command": "remoteSshWebForm.visualizeVariable",
           "when": "debugType =~ /^(clr|coreclr)$/ && variableEvaluateNamePresent && variableType =~ /DataTable|DataSet|DataView|\\[,*\\]|List|Dictionary|Collection|Enumerable|Queryable|Set<|Queue<|Stack<|Array|Hashtable|Lookup|Iterator|Bag</",
           "group": "z_commands"
+        },
+        {
+          "command": "remoteSshWebForm.visualizeVariable",
+          "when": "debugType =~ /^(clr|coreclr)$/ && variableEvaluateNamePresent && variableType =~ /DataTable|DataSet|DataView|\\[,*\\]|List|Dictionary|Collection|Enumerable|Queryable|Set<|Queue<|Stack<|Array|Hashtable|Lookup|Iterator|Bag</",
+          "group": "inline"
         }
       ],
       "debug/watch/context": [
@@ -252,6 +270,10 @@
         },
         {
           "command": "remoteSshWebForm.visualizeVariable",
+          "when": "false"
+        },
+        {
+          "command": "remoteSshWebForm.visualizeAtCursor",
           "when": "false"
         },
         {

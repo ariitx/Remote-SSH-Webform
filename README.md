@@ -24,7 +24,7 @@ The status bar shows the selected profile plus Debug / Run buttons (or Stop and 
 - **Reload** (status bar restart button, beside Stop): stops the sites, rebuilds the profile (changed references included), starts IIS Express again and, if the sites were started with Debug, reattaches the debugger.
 - **Open Site in Browser**: opens a running site on the client machine, forwarding the port through Remote-SSH.
 - **Regenerate Designer File** (right-click an `.aspx`, `.ascx` or `.master`): brings its `.designer.cs` / `.designer.vb` up to date. This also happens automatically on save; see below.
-- **Visualize as Table** (right-click a variable or watch while debugging): shows a DataTable, DataSet, list, array or dictionary as a sortable, filterable table; see below.
+- **Visualize as Table** (right-click a variable in the code, Variables or Watch while debugging): shows a DataTable, DataSet, list, array or dictionary as a sortable, filterable table; see below.
 - **Toggle Markup / Code-Behind** (F7, or right-click in the editor): switches between an `.aspx`, `.ascx`, `.master`, `.asmx`, `.ashx` or `.asax` and its code-behind, like Visual Studio's View Code. It follows the `CodeBehind` / `CodeFile` attribute, falling back to `<markup>.cs` / `.vb`. From a code-behind or `.designer` file it goes back to the markup. On a Mac keyboard, press fn+F7 unless the function keys are set as standard keys.
 
 ## Designer files
@@ -43,8 +43,12 @@ Turn it off with `remoteSshWebForm.generateDesignerOnSave`.
 
 VS Code has no equivalent of Visual Studio's DataSet and collection visualizers. While a .NET debug session is paused (`clr` or `coreclr`, C# or VB.NET), this one shows a value as a table:
 
-- **Right-click a variable** in Run and Debug > Variables or Watch > **Visualize as Table**. The item appears for collection-like types.
-- Or run **Visualize Expression as Table...** from the Command Palette and type a C# expression (the editor selection is suggested). The debugger evaluates C# syntax even in VB.NET code, and names are case-sensitive.
+- **In the code**: right-click a variable name > **Visualize as Table**. It takes the member chain up to the name you clicked, including indexers (on `Rows` in `ds.Tables[0].Rows.Count`, that's `ds.Tables[0].Rows`); select text to use exactly that expression instead.
+- **In a hover**: hold **Alt** (Option on a Mac) while hovering a variable in the stopped file. VS Code then shows the language hover instead of the debug hover, with a **Visualize as Table** link. In other files the link is in the normal hover. Extensions can't add to the debug hover itself.
+- **In Run and Debug > Variables or Watch**: right-click a variable > **Visualize as Table**, or click the table icon on its row. The icon also shows on the rows inside the debug hover (the members of what you hover, not the hovered value itself). Both appear for collection-like types.
+- **From the Command Palette**: **Visualize Expression as Table...**, then type a C# expression (the editor selection is suggested).
+
+The debugger evaluates C# syntax even in VB.NET code (`Me.` is turned into `this.`), and names are case-sensitive, so a VB.NET name must be spelled as declared.
 
 Each expression gets one table, which opens beside the editor. It reads the value again whenever the debugger stops (after a step, at the next breakpoint) and on **Refresh**. While the program runs, or after the session ends, it keeps the last values and says so.
 
@@ -118,6 +122,7 @@ The tests in [src/test/](src/test/) use Node's built-in test runner (`node:test`
 | `msbuild.test.ts` | The MSBuild task and its PowerShell script; on Windows it runs that script against a stand-in MSBuild, to check the arguments MSBuild really receives (e.g. `SolutionDir` with spaces) |
 | `profiles.test.ts` | Profile discovery, such as a `.slnLaunch.user` replacing its `.slnLaunch` |
 | `util.test.ts` | Quoting, encoding and process helpers |
+| `editorExpression.test.ts` | Finding the expression under the cursor for the editor menu and hover: member chains, indexers, `?.`, VB.NET `Me.`, and skipping keywords, calls, strings (but not interpolation holes) and comments |
 | `visualizerSerializers.test.ts` | The C# expressions Visualize as Table evaluates: well-formed, the user's expression evaluated once, lambda parameters that can't clash with locals, LINQ called statically, the row limit, the helper call |
 | `visualizerPayload.test.ts` | Decoding the debugger's C# string literals, telling values from compile errors and exceptions, type detection (typed DataTables, dictionaries, arrays), laying out rows and columns, readable type names |
 | `visualizerInspect.test.ts` | Reading a value against a scripted debugger: the helper, falling back to expressions, skipping serializers whose library isn't loaded, counting sequences without `Count`, and the messages for null, out-of-scope, unsupported and failing values |

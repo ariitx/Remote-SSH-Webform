@@ -1,13 +1,16 @@
 // "Visualize as Table": shows a DataTable, DataSet, DataView, array, list, dictionary or other sequence from a paused
 // .NET debug session in a sortable, filterable webview table. VS Code's debug visualizer API
-// (registerDebugVisualizationProvider) is still a proposed API, which a published extension can't use, so the entry
-// points are a context-menu command on variables and watch expressions, and a command-palette command.
+// (registerDebugVisualizationProvider) is still a proposed API, which a published extension can't use, and the debug
+// hover's own menu isn't open to extensions. So the entry points are: the Variables / Watch context menu and inline
+// button (which also shows on the rows of the debug hover), the editor's context menu, a link in the editor hover
+// (shown in the stopped file while Alt is held), and a command-palette command.
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { isSupportedSession } from './debugBridge';
+import { SourceLanguage, expressionAt } from './editorExpression';
 import { ListSerializer } from './serializers';
 import { PanelHost, TablePanel } from './panel';
 import { getSettings } from '../settings';
@@ -25,8 +28,35 @@ export function registerTableVisualizer(context: vscode.ExtensionContext): void 
   context.subscriptions.push(
     visualizer,
     vscode.commands.registerCommand('remoteSshWebForm.visualizeVariable', (args?: VariableMenuArgs) => visualizer.showVariable(args)),
-    vscode.commands.registerCommand('remoteSshWebForm.visualizeExpression', () => visualizer.promptExpression()),
+    vscode.commands.registerCommand('remoteSshWebForm.visualizeExpression', (expression?: unknown) =>
+      typeof expression === 'string' && expression.trim() ? visualizer.showExpression(expression.trim()) : visualizer.promptExpression(),
+    ),
+    vscode.commands.registerCommand('remoteSshWebForm.visualizeAtCursor', () => visualizer.showAtCursor()),
+    vscode.languages.registerHoverProvider(SOURCE_LANGUAGES.map(language => ({ language })), { provideHover: (document, position) => hoverFor(document, position) }),
   );
+}
+
+const SOURCE_LANGUAGES: SourceLanguage[] = ['csharp', 'vb'];
+
+/** Whether a .NET debug session is stopped, so values can be read. */
+function isPaused(): boolean {
+  const item = vscode.debug.activeStackItem;
+  return item instanceof vscode.DebugStackFrame && isSupportedSession(item.session);
+}
+
+/**
+ * A "Visualize as Table" link for the variable under the mouse. In the stopped file VS Code shows the debug hover
+ * instead of this one; holding Alt switches to it.
+ */
+function hoverFor(document: vscode.TextDocument, position: vscode.Position): vscode.Hover | undefined {
+  if (!isPaused() || !SOURCE_LANGUAGES.includes(document.languageId as SourceLanguage)) return undefined;
+  const found = expressionAt(document.lineAt(position.line).text, position.character, document.languageId as SourceLanguage);
+  if (!found) return undefined;
+  const command = `command:remoteSshWebForm.visualizeExpression?${encodeURIComponent(JSON.stringify([found.expression]))}`;
+  const markdown = new vscode.MarkdownString(`[$(table) Visualize as Table](${command} "Show this value in a table"): `, true);
+  markdown.appendText(found.expression);
+  markdown.isTrusted = { enabledCommands: ['remoteSshWebForm.visualizeExpression'] };
+  return new vscode.Hover(markdown, new vscode.Range(position.line, found.start, position.line, found.end));
 }
 
 class TableVisualizer implements PanelHost, vscode.Disposable {
@@ -75,6 +105,30 @@ class TableVisualizer implements PanelHost, vscode.Disposable {
       ignoreFocusOut: true,
     });
     if (expression?.trim()) await this.show(expression.trim());
+  }
+
+  async showExpression(expression: string): Promise<void> {
+    await this.show(expression);
+  }
+
+  /** The editor context menu's command: the selection, or the variable under the cursor. */
+  async showAtCursor(): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+    const selection = editor.selection;
+    const language = editor.document.languageId as SourceLanguage;
+    const selected = selection.isEmpty ? '' : editor.document.getText(selection).trim();
+    const expression =
+      selected && !selected.includes('\n')
+        ? selected
+        : SOURCE_LANGUAGES.includes(language)
+          ? expressionAt(editor.document.lineAt(selection.active.line).text, selection.active.character, language)?.expression
+          : undefined;
+    if (!expression) {
+      void vscode.window.showInformationMessage('Put the cursor on a variable name, or select an expression, to view it as a table.');
+      return;
+    }
+    await this.show(expression);
   }
 
   maxRows(): number {
