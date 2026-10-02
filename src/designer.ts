@@ -105,6 +105,27 @@ export function isDesignerMarkup(file: string): boolean {
   return /\.(aspx|ascx|master)$/i.test(file);
 }
 
+/**
+ * The file Visual Studio's View Code / View Markup (F7 / Shift+F7) switches to: the code-behind named by the markup's
+ * CodeBehind/CodeFile attribute (else <markup>.cs/.vb), or, from a code-behind or designer file, its markup.
+ */
+export function counterpartOf(file: string): string | undefined {
+  const exists = (p: string) => fs.existsSync(p);
+  const markup = /^(.*\.(?:aspx|ascx|master|asmx|ashx|asax))(?:\.designer)?\.(?:cs|vb)$/i.exec(file)?.[1];
+  if (markup) return exists(markup) ? markup : undefined;
+  if (!/\.(aspx|ascx|master|asmx|ashx|asax)$/i.test(file)) return undefined;
+
+  const directive = parseMarkup(readText(file) ?? '').directives.find(d => d.attrs.codebehind || d.attrs.codefile);
+  const named = directive?.attrs.codebehind ?? directive?.attrs.codefile;
+  const candidates: string[] = [];
+  if (named) {
+    const appRoot = path.dirname(findProjectFile(path.dirname(file)) ?? file);
+    candidates.push(named.startsWith('~/') ? path.join(appRoot, named.slice(2)) : path.resolve(path.dirname(file), named));
+  }
+  candidates.push(`${file}.cs`, `${file}.vb`);
+  return candidates.find(exists);
+}
+
 export function planDesigner(markupPath: string): DesignerResult {
   const markup = readText(markupPath);
   if (markup === undefined) return { skipped: `cannot read ${markupPath}` };

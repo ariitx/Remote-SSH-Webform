@@ -24,6 +24,7 @@ The status bar shows the selected profile plus Debug / Run buttons (or Stop and 
 - **Reload** (status bar restart button, beside Stop): stops the sites, rebuilds the profile (changed references included), starts IIS Express again and, if the sites were started with Debug, reattaches the debugger.
 - **Open Site in Browser**: opens a running site on the client machine, forwarding the port through Remote-SSH.
 - **Regenerate Designer File** (right-click an `.aspx`, `.ascx` or `.master`): brings its `.designer.cs` / `.designer.vb` up to date. This also happens automatically on save; see below.
+- **Toggle Markup / Code-Behind** (F7, or right-click in the editor): switches between an `.aspx`, `.ascx`, `.master`, `.asmx`, `.ashx` or `.asax` and its code-behind, like Visual Studio's View Code. It follows the `CodeBehind` / `CodeFile` attribute, falling back to `<markup>.cs` / `.vb`. From a code-behind or `.designer` file it goes back to the markup. On a Mac keyboard, press fn+F7 unless the function keys are set as standard keys.
 
 ## Designer files
 
@@ -77,7 +78,7 @@ The tests in [src/test/](src/test/) use Node's built-in test runner (`node:test`
 
 | File | Covers |
 | --- | --- |
-| `designer.test.ts` | Which controls get designer fields (templates, collection items, comments, `<script>` blocks, `<head>` children, code-behind declarations), type resolution, in-place updates, new-file formats, project-file entries |
+| `designer.test.ts` | Which controls get designer fields (templates, collection items, comments, `<script>` blocks, `<head>` children, code-behind declarations), type resolution, the F7 markup / code-behind lookup, in-place updates, new-file formats, project-file entries |
 | `clrMetadata.test.ts` | Reading public type names from an assembly, and invalid or missing files |
 | `slnLaunch.test.ts` | `.slnLaunch` parsing and generation, `.sln` / `.slnx` project lists, profile ids, web-project detection and `<IISUrl>` lookup |
 | `sites.test.ts` | Resolving a profile to IIS Express sites (ports, app paths, skipped projects), and the generated `applicationhost.config` |

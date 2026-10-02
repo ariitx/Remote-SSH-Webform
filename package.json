@@ -2,7 +2,7 @@
   "name": "remote-ssh-webform",
   "displayName": "Remote SSH WebForm",
   "description": "Build, run and debug classic ASP.NET (.NET Framework Web Forms / Web API) projects under IIS Express from VS Code Remote-SSH, driven by Visual Studio .slnLaunch profiles, and keep Web Forms designer files in sync with the markup.",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "AriTrikesuma",
   "engines": {
     "vscode": "^1.90.0"
@@ -74,6 +74,11 @@
       {
         "command": "remoteSshWebForm.generateDesigner",
         "title": "Regenerate Designer File",
+        "category": "Remote SSH WebForm"
+      },
+      {
+        "command": "remoteSshWebForm.toggleCodeBehind",
+        "title": "Toggle Markup / Code-Behind",
         "category": "Remote SSH WebForm"
       }
     ],
@@ -200,9 +205,27 @@
           "command": "remoteSshWebForm.generateDesigner",
           "when": "resourceExtname =~ /^.(aspx|ascx|master)$/i",
           "group": "1_modification"
+        },
+        {
+          "command": "remoteSshWebForm.toggleCodeBehind",
+          "when": "resourceFilename =~ /\\.(aspx|ascx|master|asmx|ashx|asax)(\\.designer)?(\\.(cs|vb))?$/i",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "remoteSshWebForm.toggleCodeBehind",
+          "when": "resourceFilename =~ /\\.(aspx|ascx|master|asmx|ashx|asax)(\\.designer)?(\\.(cs|vb))?$/i"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "remoteSshWebForm.toggleCodeBehind",
+        "key": "f7",
+        "when": "editorTextFocus && resourceFilename =~ /\\.(aspx|ascx|master|asmx|ashx|asax)(\\.designer)?(\\.(cs|vb))?$/i"
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { applyDesigner, isDesignerMarkup, planDesigner } from './designer';
+import { applyDesigner, counterpartOf, isDesignerMarkup, planDesigner } from './designer';
 import { IisExpressManager, RunningSite } from './iisexpress';
 import { buildProjects, buildSolution } from './msbuild';
 import { builtAtKey, findChangedReferences } from './references';
@@ -27,10 +27,24 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('remoteSshWebForm.reload', () => controller.reload()),
     vscode.commands.registerCommand('remoteSshWebForm.openBrowser', () => controller.openBrowser()),
     vscode.commands.registerCommand('remoteSshWebForm.generateDesigner', (uri?: vscode.Uri) => controller.generateDesigner(uri)),
+    vscode.commands.registerCommand('remoteSshWebForm.toggleCodeBehind', (uri?: vscode.Uri) => toggleCodeBehind(uri)),
   );
 }
 
 export function deactivate(): void {}
+
+/** Switches between markup and code-behind, like Visual Studio's F7. */
+async function toggleCodeBehind(uri?: vscode.Uri): Promise<void> {
+  const file = uri?.fsPath ?? vscode.window.activeTextEditor?.document.fileName;
+  const target = file && counterpartOf(file);
+  if (!target) {
+    vscode.window.showInformationMessage(
+      file ? `Remote SSH WebForm: no markup or code-behind file found for ${path.basename(file)}.` : 'Remote SSH WebForm: open a markup or code-behind file first.',
+    );
+    return;
+  }
+  await vscode.window.showTextDocument(vscode.Uri.file(target));
+}
 
 class Controller implements vscode.Disposable {
   private readonly output = vscode.window.createOutputChannel('Remote SSH WebForm');

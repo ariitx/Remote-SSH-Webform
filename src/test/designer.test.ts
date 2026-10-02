@@ -2,7 +2,7 @@ import * as assert from 'assert/strict';
 import * as fs from 'fs';
 import * as path from 'path';
 import { after, describe, test } from 'node:test';
-import { DesignerPlan, applyDesigner, planDesigner, renderDesigner, updateDesigner } from '../designer';
+import { DesignerPlan, applyDesigner, counterpartOf, planDesigner, renderDesigner, updateDesigner } from '../designer';
 import { CSPROJ, cleanup, makeProject, needsFramework, page } from './helpers';
 
 after(cleanup);
@@ -479,5 +479,32 @@ describe('project file', () => {
       assert.equal(project, original);
       assert.ok(fs.existsSync(path.join(root, 'Pages', 'Orders.aspx.designer.cs')));
     }
+  });
+});
+
+describe('markup / code-behind counterpart (F7)', () => {
+  test('markup goes to the file its CodeBehind or CodeFile names, else <markup>.cs/.vb', () => {
+    const root = makeProject({
+      'Web.vbproj': '',
+      'Orders.aspx': '<%@ Page Language="VB" CodeBehind="Code/Orders.vb" Inherits="Web.Orders" %>',
+      'Code/Orders.vb': '',
+      'Site.master': '<%@ Master Language="C#" CodeFile="~/Masters/Site.master.cs" Inherits="Site" %>',
+      'Masters/Site.master.cs': '',
+      'Pages/Global.asax': '<%@ Application Language="C#" %>',
+      'Pages/Global.asax.cs': '',
+      'Lonely.ascx': '<%@ Control Language="C#" Inherits="Web.Lonely" %>',
+    });
+    assert.equal(counterpartOf(path.join(root, 'Orders.aspx')), path.join(root, 'Code', 'Orders.vb'));
+    assert.equal(counterpartOf(path.join(root, 'Site.master')), path.join(root, 'Masters', 'Site.master.cs'));
+    assert.equal(counterpartOf(path.join(root, 'Pages', 'Global.asax')), path.join(root, 'Pages', 'Global.asax.cs'));
+    assert.equal(counterpartOf(path.join(root, 'Lonely.ascx')), undefined);
+  });
+
+  test('code-behind and designer files go to their markup', () => {
+    const root = makeProject({ 'Orders.aspx': '', 'Orders.aspx.cs': '', 'Orders.aspx.designer.cs': '', 'Gone.ascx.vb': '' });
+    assert.equal(counterpartOf(path.join(root, 'Orders.aspx.cs')), path.join(root, 'Orders.aspx'));
+    assert.equal(counterpartOf(path.join(root, 'Orders.aspx.designer.cs')), path.join(root, 'Orders.aspx'));
+    assert.equal(counterpartOf(path.join(root, 'Gone.ascx.vb')), undefined);
+    assert.equal(counterpartOf(path.join(root, 'Program.cs')), undefined);
   });
 });
