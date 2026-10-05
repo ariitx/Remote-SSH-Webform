@@ -206,6 +206,7 @@ class Controller implements vscode.Disposable {
         vscode.window.showWarningMessage(`Remote SSH WebForm: ${failures.length} site(s) failed to start. See the output for details.`);
       }
 
+      await this.forwardPorts(started);
       if (debug) {
         const toAttach = started.filter(s => s.spec.debug);
         this.stopWhenDebuggingEnds = settings.stopSitesWhenDebuggingStops && toAttach.length > 0;
@@ -365,6 +366,30 @@ class Controller implements vscode.Disposable {
       vscode.window.showErrorMessage(`Build failed for "${profile.name}". See the Build terminal and the Problems panel.${hint}`);
     }
     return ok;
+  }
+
+  /**
+   * Forwards every site's port through Remote-SSH, so each one answers on localhost on the client
+   * machine, including sites the browser only calls into (e.g. an API used by another site's pages).
+   */
+  private async forwardPorts(sites: RunningSite[]): Promise<void> {
+    if (!vscode.env.remoteName) return;
+    await Promise.all(
+      sites.map(async site => {
+        try {
+          const external = await vscode.env.asExternalUri(vscode.Uri.parse(site.spec.url));
+          const port = Number(external.authority.split(':').pop()) || site.spec.port;
+          if (port !== site.spec.port) {
+            this.output.appendLine(
+              `[warn] ${site.spec.name}: port ${site.spec.port} is busy on the client, so it is forwarded as ${external.toString(true)}. ` +
+                `Pages that call localhost:${site.spec.port} won't reach it; free that port on the client and Reload.`,
+            );
+          }
+        } catch (error) {
+          this.output.appendLine(`[warn] ${site.spec.name}: could not forward port ${site.spec.port}: ${errorMessage(error)}`);
+        }
+      }),
+    );
   }
 
   private async attach(sites: RunningSite[], settings: Settings): Promise<void> {

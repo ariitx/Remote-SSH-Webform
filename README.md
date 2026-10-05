@@ -16,13 +16,13 @@ The status bar shows the selected profile plus Debug / Run buttons (or Stop and 
 
 - **Select Launch Profile**: lists every profile in `*.slnLaunch` / `*.slnLaunch.user` (the `.user` file wins, as in Visual Studio), plus each IIS Express web project on its own. The choice is remembered per workspace.
   - For a solution (`.sln` / `.slnx`) without a `.slnLaunch`, the list offers **Create `<Solution>.slnLaunch`**. It writes one profile per web project that has an `<IISUrl>`, plus an "All web projects" profile, next to the solution, where Visual Studio also reads it. Edit the file to combine projects into your own profiles.
-- **Debug Profile**: builds the profile's projects, starts IIS Express for each web project, and attaches the debugger to each `Action: "Start"` project's process by PID.
+- **Debug Profile**: builds the profile's projects, starts IIS Express for each web project, and attaches the debugger to each `Action: "Start"` project's process by PID. In a Remote-SSH window, every site's port is then forwarded, so each one also answers on `localhost:<port>` on the client, including an API that another site's pages call.
 - **Run Profile**: the same without attaching.
 - **Build Profile**: builds only; errors appear in the Problems panel.
 - **Build Solution** (status bar wrench button): builds the whole solution behind the selected profile (or asks which one when that's ambiguous), restoring NuGet packages first. Use it after pulling changes to referenced projects, since the profile builds skip project references by default.
 - **Stop IIS Express**: stops only the IIS Express processes this extension started.
 - **Reload** (status bar restart button, beside Stop): stops the sites, rebuilds the profile (changed references included), starts IIS Express again and, if the sites were started with Debug, reattaches the debugger.
-- **Open Site in Browser**: opens a running site on the client machine, forwarding the port through Remote-SSH.
+- **Open Site in Browser**: opens a running site on the client machine through its forwarded port.
 - **Regenerate Designer File** (right-click an `.aspx`, `.ascx` or `.master`): brings its `.designer.cs` / `.designer.vb` up to date. This also happens automatically on save; see below.
 - **Visualize as Table** (right-click a variable in the code, Variables or Watch while debugging): shows a DataTable, DataSet, list, array or dictionary as a sortable, filterable table; see below.
 - **Toggle Markup / Code-Behind** (F7, or right-click in the editor): switches between an `.aspx`, `.ascx`, `.master`, `.asmx`, `.ashx` or `.asax` and its code-behind, like Visual Studio's View Code. It follows the `CodeBehind` / `CodeFile` attribute, falling back to `<markup>.cs` / `.vb`. From a code-behind or `.designer` file it goes back to the markup. On a Mac keyboard, press fn+F7 unless the function keys are set as standard keys.
